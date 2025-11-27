@@ -1,9 +1,15 @@
-// services/api.ts
-import { Card, Deck, Show, Stats, TaskProgress } from "@/constants/types";
+import {
+  Card,
+  Deck,
+  ProcessingConfig,
+  Show,
+  Stats,
+  TaskProgress,
+} from "@/constants/types";
 import axios from "axios";
 
 // --- CONFIGURATION ---
-const SERVER_IP = "192.168.178.32"; // CHANGE TO YOUR PC IP
+const SERVER_IP = "192.168.178.115"; // CHANGE TO YOUR PC IP
 const PORT = "5000";
 const API_URL = `http://${SERVER_IP}:${PORT}/api`;
 
@@ -12,17 +18,27 @@ export const api = axios.create({
   timeout: 10000,
 });
 
-// --- 1. DASHBOARD & STATS ---
+// --- 1. SYSTEM & CONFIG ---
 export const getStats = async (): Promise<Stats> => {
   try {
-    // Attempt to hit the server
     const res = await api.get("/stats");
     return res.data;
   } catch (e) {
-    // Don't return { users: 0 } here.
-    // THROW the error so the UI knows the server is dead.
     console.log("Server Check Failed");
     throw e;
+  }
+};
+
+export const getProcessingConfig = async (): Promise<ProcessingConfig> => {
+  try {
+    const res = await api.get("/config/processing-rules");
+    return res.data;
+  } catch (e) {
+    return {
+      encoding: "utf-8",
+      normalization: "NFKC",
+      stripWhitespace: true,
+    };
   }
 };
 
@@ -30,7 +46,16 @@ export const getStats = async (): Promise<Stats> => {
 export const getAllDecks = async (): Promise<Deck[]> => {
   try {
     const res = await api.get("/decks");
-    return res.data.decks;
+    return res.data.decks.map((d: any) => ({
+      id: d.id,
+      title: d.show_title || "Unknown Show",
+      episode: d.episode,
+      lang: d.language || "ja",
+      cards: d.card_count || 0,
+      creator_name: d.creator_name,
+      cover_image: d.cover_image,
+      is_public: d.is_public,
+    }));
   } catch (e) {
     console.error("Fetch Decks Error", e);
     return [];
@@ -47,7 +72,42 @@ export const getShows = async (): Promise<Show[]> => {
   }
 };
 
-// --- 3. DECK DETAILS (New) ---
+// --- 3. DECK DETAILS & UNLOCK ---
+export const getDeckDetails = async (deckId: string): Promise<Deck> => {
+  const res = await api.get(`/decks/${deckId}`);
+  const d = res.data;
+  return {
+    id: d.id,
+    title: d.show_title || "Unknown Show",
+    episode: d.episode,
+    lang: d.language || "ja",
+    cards: d.card_count || 0,
+    creator_name: d.creator_name,
+    cover_image: d.cover_image,
+    is_public: d.is_public,
+  };
+};
+
+/**
+ * UPDATED: This now sends ONLY the hash, not the file.
+ * The backend should compare this hash against the database.
+ */
+export const unlockDeckWithHash = async (
+  deckId: string,
+  hash: string
+): Promise<{ success: boolean; message: string }> => {
+  try {
+    // We send a JSON body: { "hash": "..." }
+    const res = await api.post(`/decks/${deckId}/unlock`, { hash });
+    return res.data;
+  } catch (e: any) {
+    if (e.response && e.response.data) {
+      return e.response.data;
+    }
+    return { success: false, message: "Network error during verification" };
+  }
+};
+
 export const getDeckCards = async (deckId: string): Promise<Card[]> => {
   try {
     const res = await api.get(`/decks/${deckId}/cards`);
@@ -61,14 +121,13 @@ export const getDeckCards = async (deckId: string): Promise<Card[]> => {
 // --- 4. CREATION (Pipeline) ---
 export const createDeck = async (formData: FormData) => {
   try {
-    // We use fetch for multipart to avoid Android network issues
     const response = await fetch(`${API_URL}/create-deck`, {
       method: "POST",
       body: formData,
     });
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || "Upload failed");
-    return result; // Returns { message: "...", task_id: "..." }
+    return result;
   } catch (error: any) {
     console.error("Upload Failed:", error);
     throw error;
@@ -82,11 +141,9 @@ export const getTaskProgress = async (
     const res = await api.get(`/progress/${taskId}`);
     return res.data;
   } catch (e: any) {
-    // FIXED: Safe check for response existence
     if (e.response && e.response.status === 404) {
       return { status: "running", percent: 0, message: "Initializing task..." };
     }
-    // If actual network error (server down, timeout)
     return { status: "error", percent: 0, message: "Connection lost" };
   }
 };
@@ -108,24 +165,9 @@ export const stopProcessingTask = async (taskId: string) => {
   }
 };
 
-export const checkFileExistence = async (
-  fileHash: string | null,
-  lines?: string[]
-) => {
+export const checkFileExistence = async (fileHash: string) => {
   try {
-    const payload: any = {};
-    if (fileHash) payload.hash = fileHash;
-
-    // OPTIMIZATION: Only send a sample for the check
-    // 50 lines is plenty to fingerprint a show uniquely
-    if (lines && lines.length > 0) {
-      // Take 50 lines from the middle to avoid generic intros/outros
-      const start = Math.floor(lines.length * 0.2);
-      const sample = lines.slice(start, start + 50);
-      payload.lines = sample;
-    }
-
-    const res = await api.post("/check-file", payload);
+    const res = await api.post("/check-file", { hash: fileHash });
     return res.data;
   } catch (e) {
     return { found: false };

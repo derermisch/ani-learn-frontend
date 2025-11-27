@@ -1,158 +1,57 @@
+import { ProcessingConfig } from "@/constants/types";
+import * as Crypto from "expo-crypto";
 import * as FileSystem from "expo-file-system/legacy";
 
 /**
- * ---------------------------------------------------------
- * HELPER: CLEAN TAGS
- * ---------------------------------------------------------
+ * Reads a file as a raw string, handling potential BOM characters.
  */
-const cleanLine = (text: string): string => {
-  if (!text) return "";
-  let cleaned = text;
+const readRawFile = async (fileUri: string): Promise<string> => {
+  const content = await FileSystem.readAsStringAsync(fileUri, {
+    encoding: FileSystem.EncodingType.UTF8,
+  });
 
-  // 1. Remove ASS tags { ... }
-  cleaned = cleaned.replace(/\{.*?\}/g, "");
-
-  // 2. Remove HTML-like tags < ... >
-  cleaned = cleaned.replace(/<[^>]*>/g, "");
-
-  // 3. Replace ASS newlines \N or \n with a space
-  cleaned = cleaned.replace(/\\N/gi, " ");
-  cleaned = cleaned.replace(/\\n/gi, " ");
-
-  return cleaned.trim();
-};
-
-/**
- * ---------------------------------------------------------
- * PARSER: .SRT & .VTT
- * ---------------------------------------------------------
- */
-const parseSrtVtt = (content: string): string[] => {
-  // Robust split for \r\n, \n, AND \r
-  const lines = content.split(/\r\n|\n|\r/);
-  const extracted: string[] = [];
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-
-    if (!trimmed) continue;
-    if (trimmed === "WEBVTT") continue;
-    if (/^\d+$/.test(trimmed)) continue; // Skip index numbers
-    if (trimmed.includes("-->")) continue; // Skip timestamps
-
-    const clean = cleanLine(trimmed);
-    if (clean) extracted.push(clean);
+  // Remove Byte Order Mark (BOM) if present, to match Python's utf-8 reading
+  if (content.length > 0 && content.charCodeAt(0) === 0xfeff) {
+    return content.slice(1);
   }
-  return extracted;
+  return content;
 };
 
 /**
- * ---------------------------------------------------------
- * PARSER: .ASS / .SSA
- * ---------------------------------------------------------
+ * CALCULATE HASH
+ * Matches the backend's PREPROCESSOR.calculate_hash logic.
+ * Used for:
+ * 1. Unlocking a deck (verifying ownership)
+ * 2. Checking if a deck exists before creating it
  */
-const parseAss = (content: string): string[] => {
-  const lines = content.split(/\r\n|\n|\r/);
-  const extracted: string[] = [];
-  let eventsSection = false;
-  let textColumnIndex = 9;
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-
-    if (trimmed === "[Events]") {
-      eventsSection = true;
-      continue;
-    }
-    if (!eventsSection) continue;
-
-    if (trimmed.startsWith("Format:")) {
-      const parts = trimmed
-        .substring(7)
-        .split(",")
-        .map((s) => s.trim());
-      const idx = parts.indexOf("Text");
-      if (idx !== -1) textColumnIndex = idx;
-      continue;
-    }
-
-    if (trimmed.startsWith("Dialogue:")) {
-      const rawContent = trimmed.substring(9).trim();
-      let commaCount = 0;
-      let textStartPos = 0;
-
-      for (let i = 0; i < rawContent.length; i++) {
-        if (rawContent[i] === ",") {
-          commaCount++;
-          if (commaCount === textColumnIndex) {
-            textStartPos = i + 1;
-            break;
-          }
-        }
-      }
-
-      if (textStartPos > 0) {
-        const rawText = rawContent.substring(textStartPos);
-        const clean = cleanLine(rawText);
-        if (clean) extracted.push(clean);
-      }
-    }
-  }
-  return extracted;
-};
-
-/**
- * ---------------------------------------------------------
- * MAIN PROCESSOR
- * ---------------------------------------------------------
- */
-export const processSubtitleFile = async (
+export const generateFileHash = async (
   fileUri: string,
-  fileName: string
-) => {
+  config: ProcessingConfig
+): Promise<string> => {
   try {
-    console.log(`📂 Processing ${fileName}...`);
+    const rawContent = await readRawFile(fileUri);
 
-    const content = await FileSystem.readAsStringAsync(fileUri, {
-      encoding: "utf8",
-    });
+    let textToHash = rawContent;
 
-    // BOM Removal
-    const cleanContent =
-      content.length > 0 && content.charCodeAt(0) === 0xfeff
-        ? content.slice(1)
-        : content;
-
-    const lowerName = fileName.toLowerCase();
-    let extractedLines: string[] = [];
-
-    if (lowerName.endsWith(".ass") || lowerName.endsWith(".ssa")) {
-      extractedLines = parseAss(cleanContent);
-    } else {
-      extractedLines = parseSrtVtt(cleanContent);
+    // 1. Normalize (NFKC)
+    if (config.normalization === "NFKC") {
+      textToHash = textToHash.normalize("NFKC");
     }
 
-    if (extractedLines.length === 0) {
-      throw new Error("No dialogue found in subtitle file.");
+    // 2. Strip Whitespace
+    if (config.stripWhitespace) {
+      textToHash = textToHash.replace(/\s+/g, "");
     }
 
-    const finalPlainText = extractedLines.join("\n");
+    // 3. SHA256 Hash
+    const hash = await Crypto.digestStringAsync(
+      Crypto.CryptoDigestAlgorithm.SHA256,
+      textToHash
+    );
 
-    // Save temp file (The backend will calculate the hash from this file upload later)
-    const tempFileName = `processed_${Date.now()}.txt`;
-    const tempUri = `${FileSystem.cacheDirectory}${tempFileName}`;
-    await FileSystem.writeAsStringAsync(tempUri, finalPlainText, {
-      encoding: "utf8",
-    });
-
-    return {
-      uri: tempUri,
-      lineCount: extractedLines.length,
-      preview: extractedLines.slice(0, 5),
-      allLines: extractedLines, // The backend uses this to calculate the hash for the check
-    };
+    return hash;
   } catch (error: any) {
-    console.error("❌ Parser Error:", error);
-    throw new Error(error.message || "Failed to parse file");
+    console.error("❌ Hashing Error:", error);
+    throw new Error("Failed to generate file hash");
   }
 };

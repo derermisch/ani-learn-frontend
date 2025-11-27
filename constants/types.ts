@@ -1,29 +1,35 @@
-// constants/types.ts
+export interface ProcessingConfig {
+  encoding: string; // e.g., 'utf-8'
+  normalization: string; // e.g., 'NFKC'
+  stripWhitespace: boolean; // true
+}
+
+export interface Deck {
+  id: string;
+  title: string;
+  episode: string;
+  lang: string;
+  cards: number;
+  cover_image?: string;
+  creator_name?: string;
+  is_public?: boolean;
+  // Added specific fields for details view
+  description?: string;
+  created_at?: string;
+}
 
 export interface Show {
   id: string;
   title: string;
   cover_image?: string;
-  description?: string;
-}
-
-export interface Deck {
-  id: string;
-  episode: string | number; // Backend might return int, UI usually treats as string
-  language: string;
-  card_count: number;
-  is_public: boolean;
-  // Joined fields from $lookup
-  show_title: string;
-  cover_image?: string;
-  creator_name: string;
+  deck_count: number;
 }
 
 export interface Card {
   id: string;
   phrase: string;
-  translation?: string;
-  // You can add token details here later
+  translation: string;
+  tokens: any[]; // Simplified for now
 }
 
 export interface Stats {
@@ -34,7 +40,7 @@ export interface Stats {
 }
 
 export interface TaskProgress {
-  status: "running" | "completed" | "error";
+  status: "running" | "completed" | "error" | "cancelled";
   percent: number;
   message: string;
 }

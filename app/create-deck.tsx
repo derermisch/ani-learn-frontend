@@ -17,34 +17,33 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   checkFileExistence,
   createDeck,
+  getProcessingConfig,
   getShows,
   getTaskProgress,
   stopProcessingTask,
 } from "../services/api";
-import { processSubtitleFile } from "../utils/subtitleParser";
+import { generateFileHash } from "../utils/subtitleParser";
 
 export default function CreateDeckScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  // -- File & Parsing State --
+  // -- File State --
   const [originalFile, setOriginalFile] =
     useState<DocumentPicker.DocumentPickerAsset | null>(null);
-  const [processedUri, setProcessedUri] = useState<string | null>(null);
   const [fileHash, setFileHash] = useState<string | null>(null);
-  const [isParsing, setIsParsing] = useState(false);
+
+  // -- UI State --
+  const [isHashing, setIsHashing] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
-  const [parseError, setParseError] = useState<string | null>(null);
-  const [previewLines, setPreviewLines] = useState<string[]>([]);
-  const [lineCount, setLineCount] = useState(0);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // -- Form Data --
   const [shows, setShows] = useState<Show[]>([]);
   const [showName, setShowName] = useState("");
   const [episode, setEpisode] = useState("01");
   const [language, setLanguage] = useState("ja");
-
-  const [isLocked, setIsLocked] = useState(false);
+  const [isLocked, setIsLocked] = useState(false); // Locked if existing deck found
 
   // -- Backend Processing State --
   const [isUploading, setIsUploading] = useState(false);
@@ -87,10 +86,8 @@ export default function CreateDeckScreen() {
 
   const handlePickFile = async () => {
     try {
-      // Reset State
-      setParseError(null);
-      setPreviewLines([]);
-      setProcessedUri(null);
+      // Reset
+      setErrorMsg(null);
       setFileHash(null);
       setOriginalFile(null);
       setIsLocked(false);
@@ -106,80 +103,74 @@ export default function CreateDeckScreen() {
 
       const asset = res.assets[0];
       setOriginalFile(asset);
-      setIsParsing(true);
+      setIsHashing(true);
 
+      // Short timeout to let UI render the spinner
       setTimeout(async () => {
         try {
-          // 1. Process File (Client Side)
-          const result = await processSubtitleFile(asset.uri, asset.name);
-          setProcessedUri(result.uri);
-          // setFileHash(result.hash);
-          setPreviewLines(result.preview);
-          setLineCount(result.lineCount);
+          // 1. Fetch Config to match Backend Rules
+          const config = await getProcessingConfig();
 
-          // 2. Check Backend for Hash
-          setIsParsing(false);
+          // 2. Hash File (Raw)
+          const hash = await generateFileHash(asset.uri, config);
+          setFileHash(hash);
+          setIsHashing(false);
           setIsChecking(true);
 
-          // UPDATE: Send lines for soft-matching
-          const check = await checkFileExistence(null, result.allLines);
-
+          // 3. Check Backend
+          const check = await checkFileExistence(hash);
           setIsChecking(false);
 
           if (check.exists && check.decks && check.decks.length > 0) {
             const match = check.decks[0];
 
-            // Auto-Correct Fields
+            // Auto-Fill & Lock
             setShowName(match.show_title);
             setEpisode(match.episode);
             setLanguage(match.language);
             setIsLocked(true);
 
-            // Custom Messages based on Match Type
-            if (check.match_type === "soft") {
-              Alert.alert(
-                "Smart Detection",
-                `This file seems to be a version of "${match.show_title} - Ep ${match.episode}".\n\nWe have auto-selected the correct show details for you.`
-              );
-            } else {
-              Alert.alert(
-                "Known File",
-                `This exact file matches "${match.show_title} - Ep ${match.episode}".`
-              );
-            }
+            Alert.alert(
+              "Known File",
+              `This file matches an existing deck: "${match.show_title} - Ep ${match.episode}".\n\nWe will sync your progress instead of creating a duplicate.`
+            );
           } else {
-            // New File: Try to auto-guess episode from filename
+            // Try to guess episode from filename (Simple regex)
             const numbers = asset.name.match(/\d+/);
             if (numbers) {
               setEpisode(numbers[0]);
             }
           }
         } catch (e: any) {
-          setIsParsing(false);
+          setIsHashing(false);
           setIsChecking(false);
-          setParseError(e.message);
+          setErrorMsg(e.message);
         }
       }, 100);
     } catch (err) {
-      setIsParsing(false);
+      setIsHashing(false);
       console.error(err);
     }
   };
 
   const handleSubmit = async () => {
-    if (!processedUri || !originalFile || !showName)
+    if (!originalFile || !showName)
       return Alert.alert("Missing Data", "Please fill in all fields.");
 
     setIsUploading(true);
     setProgressPercent(0);
-    setStatusMsg("Uploading processed text...");
+    setStatusMsg("Uploading file...");
 
     try {
+      // --- HERE IS WHERE WE PREPARE THE FILE FOR SENDING ---
       const formData = new FormData();
+
+      // Append the file with the key 'subtitle_file' which matches
+      // request.files["subtitle_file"] in the Python backend
       formData.append("subtitle_file", {
-        uri: processedUri,
-        name: `${originalFile.name}.txt`,
-        type: "text/plain",
+        uri: originalFile.uri, // Pointing to the file on the device
+        name: originalFile.name,
+        type: originalFile.mimeType || "text/plain",
       } as any);
 
       formData.append("show_name", showName);
@@ -187,6 +178,7 @@ export default function CreateDeckScreen() {
       formData.append("lan", language);
       formData.append("username", "mobile_user");
 
+      // --- SENDING TO BACKEND ---
       const response = await createDeck(formData);
 
       if (!response.task_id) {
@@ -245,15 +237,15 @@ export default function CreateDeckScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         {/* FILE PICKER */}
         <TouchableOpacity
-          style={[styles.uploadBox, parseError && { borderColor: "#FF7171" }]}
+          style={[styles.uploadBox, errorMsg && { borderColor: "#FF7171" }]}
           onPress={handlePickFile}
-          disabled={isUploading || isParsing || isChecking}
+          disabled={isUploading || isHashing || isChecking}
         >
-          {isParsing ? (
+          {isHashing ? (
             <View style={{ alignItems: "center" }}>
               <ActivityIndicator size="large" color="#A071FF" />
               <Text style={{ marginTop: 10, color: "#AAA" }}>
-                Reading & Hashing...
+                Hashing File...
               </Text>
             </View>
           ) : isChecking ? (
@@ -268,21 +260,13 @@ export default function CreateDeckScreen() {
               <Ionicons
                 name="document-text"
                 size={32}
-                color={parseError ? "#FF7171" : "#A071FF"}
+                color={errorMsg ? "#FF7171" : "#A071FF"}
               />
-              <Text
-                style={{
-                  marginTop: 10,
-                  fontWeight: "bold",
-                  color: "#FFF",
-                }}
-              >
-                {originalFile.name}
-              </Text>
-              {isLocked && (
-                <Text style={{ fontSize: 12, color: "#A071FF", marginTop: 4 }}>
-                  ✓ Existing Match Found
-                </Text>
+              <Text style={styles.fileName}>{originalFile.name}</Text>
+              {isLocked ? (
+                <Text style={styles.successMsg}>✓ Matched Existing Deck</Text>
+              ) : (
+                <Text style={styles.readyMsg}>Ready to Process</Text>
               )}
             </View>
           ) : (
@@ -296,42 +280,10 @@ export default function CreateDeckScreen() {
         </TouchableOpacity>
 
         {/* ERROR */}
-        {parseError && (
+        {errorMsg && (
           <View style={styles.errorBox}>
             <Ionicons name="alert-circle" size={20} color="#FF7171" />
-            <Text style={styles.errorText}>Error: {parseError}</Text>
-          </View>
-        )}
-
-        {/* PREVIEW */}
-        {previewLines.length > 0 && !parseError && (
-          <View style={styles.previewContainer}>
-            <View style={styles.previewHeader}>
-              <Text style={styles.defaultSemiBold}>Dialogue Preview</Text>
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>{lineCount} Lines</Text>
-              </View>
-            </View>
-            <View style={styles.previewContent}>
-              {previewLines.map((line, i) => (
-                <Text key={i} style={styles.previewLine} numberOfLines={1}>
-                  <Text style={{ color: "#666" }}>{i + 1}. </Text>
-                  {line}
-                </Text>
-              ))}
-              {lineCount > 5 && (
-                <Text
-                  style={{
-                    color: "#666",
-                    fontSize: 12,
-                    marginTop: 5,
-                    fontStyle: "italic",
-                  }}
-                >
-                  ...and {lineCount - 5} more
-                </Text>
-              )}
-            </View>
+            <Text style={styles.errorText}>Error: {errorMsg}</Text>
           </View>
         )}
 
@@ -349,7 +301,6 @@ export default function CreateDeckScreen() {
               onChangeText={setShowName}
               editable={!isInputDisabled}
             />
-            {/* Suggestions only if not locked */}
             {shows.length > 0 && !showName && !isInputDisabled && (
               <ScrollView
                 horizontal
@@ -430,10 +381,10 @@ export default function CreateDeckScreen() {
           <TouchableOpacity
             style={[
               styles.btn,
-              (!processedUri || !showName || isChecking) && { opacity: 0.5 },
+              (!originalFile || !showName || isChecking) && { opacity: 0.5 },
             ]}
             onPress={handleSubmit}
-            disabled={!processedUri || !showName || isChecking}
+            disabled={!originalFile || !showName || isChecking}
           >
             <Text style={styles.btnText}>
               {isLocked ? "Sync Existing Deck" : "Start Processing"}
@@ -459,11 +410,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#FFF",
   },
-  defaultSemiBold: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#FFF",
-  },
 
   uploadBox: {
     height: 140,
@@ -476,6 +422,14 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     backgroundColor: "rgba(255,255,255,0.02)",
   },
+  fileName: {
+    marginTop: 10,
+    fontWeight: "bold",
+    color: "#FFF",
+    textAlign: "center",
+  },
+  successMsg: { fontSize: 12, color: "#4CAF50", marginTop: 4 },
+  readyMsg: { fontSize: 12, color: "#AAA", marginTop: 4 },
 
   errorBox: {
     flexDirection: "row",
@@ -487,30 +441,6 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   errorText: { color: "#FF7171", flex: 1 },
-
-  previewContainer: {
-    backgroundColor: "#1E1E1E",
-    borderRadius: 12,
-    padding: 15,
-    marginBottom: 30,
-    borderWidth: 1,
-    borderColor: "#333",
-  },
-  previewHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  previewContent: { gap: 4 },
-  previewLine: { fontSize: 13, color: "#DDD" },
-  badge: {
-    backgroundColor: "#333",
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  badgeText: { fontSize: 10, fontWeight: "bold", color: "#FFF" },
 
   formSection: { marginBottom: 20 },
   formGroup: { marginBottom: 20 },
