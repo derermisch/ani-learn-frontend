@@ -1,9 +1,9 @@
-// metro.config.js
 const { getDefaultConfig } = require("expo/metro-config");
 
 const config = getDefaultConfig(__dirname);
 
-// Add 'phar' to the list of known asset extensions
+// Add 'phar' and 'html' to assets
 config.resolver.assetExts.push("phar");
+config.resolver.assetExts.push("html");
 
 module.exports = config;

@@ -16,7 +16,6 @@ import {
 import { WebView } from "react-native-webview";
 import { Deck } from "../../constants/types";
 import { getDeckDetails, unlockDeckWithHash } from "../../services/api";
-import { phpRunnerHtml } from "../../utils/phpRunner";
 
 export default function DeckDetailScreen() {
   const { id } = useLocalSearchParams();
@@ -32,6 +31,8 @@ export default function DeckDetailScreen() {
   );
   const [libLoaded, setLibLoaded] = useState(false);
   const [pharBase64, setPharBase64] = useState<string | null>(null);
+  // NEW: State to hold the HTML content
+  const [htmlContent, setHtmlContent] = useState<string | null>(null);
 
   // Track injection status
   const [isWebViewReady, setIsWebViewReady] = useState(false);
@@ -40,6 +41,41 @@ export default function DeckDetailScreen() {
   const [unlockStatus, setUnlockStatus] = useState<
     "idle" | "processing" | "success" | "error"
   >("idle");
+
+  useEffect(() => {
+    if (id) loadDeck(id as string);
+
+    // Load Resources in parallel
+    loadResources();
+  }, [id]);
+
+  const loadResources = async () => {
+    try {
+      // 1. Load HTML File
+      const htmlAsset = Asset.fromModule(
+        require("../../assets/php/runner.html")
+      );
+      await htmlAsset.downloadAsync();
+      const htmlString = await FileSystem.readAsStringAsync(
+        htmlAsset.localUri!,
+        { encoding: "utf8" }
+      );
+      setHtmlContent(htmlString);
+
+      // 2. Load Phar File (Your existing logic)
+      const pharAsset = Asset.fromModule(
+        require("../../assets/php/subtitles.phar")
+      );
+      await pharAsset.downloadAsync();
+      const pharString = await FileSystem.readAsStringAsync(
+        pharAsset.localUri!,
+        { encoding: "base64" }
+      );
+      setPharBase64(pharString);
+    } catch (e) {
+      console.error("Resource Load Failed", e);
+    }
+  };
 
   useEffect(() => {
     if (id) loadDeck(id as string);
@@ -291,22 +327,25 @@ export default function DeckDetailScreen() {
       </ScrollView>
 
       {/* HIDDEN WEBVIEW */}
-      <View
-        style={{
-          height: 0,
-          width: 0,
-          overflow: "hidden",
-          position: "absolute",
-        }}
-      >
-        <WebView
-          ref={webViewRef}
-          source={{ html: phpRunnerHtml }}
-          onMessage={handleWebViewMessage}
-          originWhitelist={["*"]}
-          javaScriptEnabled={true}
-        />
-      </View>
+      {/* HIDDEN WEBVIEW */}
+      {htmlContent && (
+        <View
+          style={{
+            height: 0,
+            width: 0,
+            overflow: "hidden",
+            position: "absolute",
+          }}
+        >
+          <WebView
+            ref={webViewRef}
+            source={{ html: htmlContent }} // Use state instead of imported string
+            onMessage={handleWebViewMessage}
+            originWhitelist={["*"]}
+            javaScriptEnabled={true}
+          />
+        </View>
+      )}
     </View>
   );
 }
