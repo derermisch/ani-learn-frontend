@@ -1,0 +1,199 @@
+// assets/php/worker.txt
+
+// ==========================================
+// 1. POLYFILLS (Fixes for Android WebView)
+// ==========================================
+
+// Android WebView lacks the 'navigator.locks' API required by php-wasm.
+// We patch it to simply execute the callback immediately.
+if (!navigator.locks) {
+  navigator.locks = {
+    request: async (name, options, callback) => {
+      if (typeof options === "function") callback = options;
+      return await callback({ name: name });
+    },
+  };
+}
+
+// ==========================================
+// 2. CONSOLE BRIDGE
+// ==========================================
+
+// Redirects console logs from this hidden WebView back to React Native.
+function sendToRN(type, message, payload) {
+  if (window.ReactNativeWebView) {
+    window.ReactNativeWebView.postMessage(
+      JSON.stringify({ type, message, payload })
+    );
+  }
+}
+
+const originalLog = console.log;
+console.log = function (message) {
+  sendToRN("LOG", message);
+  originalLog.apply(console, arguments);
+};
+console.error = function (message) {
+  sendToRN("LOG", "ERROR: " + message);
+};
+window.onerror = function (message) {
+  sendToRN("LOG", "CRITICAL: " + message);
+};
+
+// ==========================================
+// 3. QUEUE SYSTEM
+// ==========================================
+
+// Ensures PHP operations run sequentially (Single Thread Safety)
+window.taskQueue = Promise.resolve();
+
+// --- LIBRARY (PHAR) INSTALLATION ---
+
+window.resetPharFile = function () {
+  window.taskQueue = window.taskQueue.then(async () => {
+    if (!window.runPhp) return;
+    await window.runPhp(
+      "<?php if(file_exists('/subtitles.phar')) unlink('/subtitles.phar'); ?>"
+    );
+  });
+};
+
+window.appendChunk = function (chunk) {
+  window.taskQueue = window.taskQueue
+    .then(async () => {
+      if (!window.runPhp) return;
+      // We write directly to disk to avoid JavaScript memory limits
+      const phpCode =
+        "<?php file_put_contents('/subtitles.phar', base64_decode('" +
+        chunk +
+        "'), FILE_APPEND); ?>";
+      await window.runPhp(phpCode);
+    })
+    .catch((e) => console.error("Chunk Write Failed: " + e.message));
+};
+
+window.installLibrary = function () {
+  window.taskQueue = window.taskQueue.then(async () => {
+    // Run the installation check script
+    await window.runPhp(window.PHP_SCRIPTS.install);
+  });
+};
+
+// --- SUBTITLE PROCESSING (BUFFERED) ---
+
+window.resetSubtitleBuffer = function () {
+  window.taskQueue = window.taskQueue.then(async () => {
+    // Clean up previous run
+    const phpCode =
+      "<?php if(file_exists('/input.b64')) unlink('/input.b64'); ?>";
+    if (window.runPhp) await window.runPhp(phpCode);
+  });
+};
+
+window.appendSubtitleChunk = function (chunk) {
+  window.taskQueue = window.taskQueue
+    .then(async () => {
+      if (!window.runPhp) return;
+      // Append chunk to input file
+      const phpCode =
+        "<?php file_put_contents('/input.b64', '" +
+        chunk +
+        "', FILE_APPEND); ?>";
+      await window.runPhp(phpCode);
+    })
+    .catch((e) => console.error("Subtitle Write Failed: " + e.message));
+};
+
+window.processBufferedSubtitle = async function () {
+  console.log("Processing file (File Mode)...");
+
+  // Run the main processing logic.
+  // It reads from '/input.b64' automatically.
+  window.taskQueue = window.taskQueue.then(() =>
+    window.runPhp(window.PHP_SCRIPTS.process)
+  );
+};
+
+// ==========================================
+// 4. BOOTSTRAP ENGINE
+// ==========================================
+
+async function start() {
+  console.log("Worker starting...");
+
+  try {
+    console.log("Importing PHP Engine...");
+
+    // Safety timeout in case network hangs
+    const importWithTimeout = (url) => {
+      return Promise.race([
+        import(url),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Import timed out")), 15000)
+        ),
+      ]);
+    };
+
+    const { PhpWeb } = await importWithTimeout(
+      "https://cdn.jsdelivr.net/npm/php-wasm@0.0.9-alpha-20/PhpWeb.mjs"
+    );
+    console.log("Import Complete.");
+
+    const phpInstance = new PhpWeb({
+      autoTransaction: false, // Essential for Android stability
+      sharedLibs: [
+        // 1. PHAR
+        { url: "https://unpkg.com/php-wasm-phar/php8.3-phar.so", ini: true },
+
+        // 2. MBSTRING (Requires libonig)
+        { url: "https://unpkg.com/php-wasm-mbstring/libonig.so", ini: false },
+        {
+          url: "https://unpkg.com/php-wasm-mbstring/php8.3-mbstring.so",
+          ini: true,
+        },
+      ],
+    });
+
+    // Global helper for the Queue system
+    window.runPhp = async (code) => {
+      await phpInstance.run(code);
+    };
+
+    // --- OUTPUT HANDLER ---
+    phpInstance.addEventListener("output", (event) => {
+      let output = event.detail;
+      if (typeof output !== "string") output = String(output);
+
+      if (output.includes("LIBRARY_INSTALLED_CONFIRMED")) {
+        sendToRN("LOG", "Library installed successfully!");
+      } else if (output.includes("LIBRARY_MISSING")) {
+        console.error("Library upload failed (0 bytes)");
+      }
+      // Detect JSON Result
+      else if (output.trim().startsWith("{")) {
+        try {
+          const data = JSON.parse(output);
+          if (data.hash && data.preview) {
+            sendToRN("RESULT", "Conversion Complete", data);
+          }
+        } catch (e) {
+          /* Not JSON, ignore */
+        }
+      } else {
+        // Filter out noise logs
+        if (output.trim().length > 0 && !output.includes("Deprecated"))
+          console.log("PHP StdOut: " + output);
+      }
+    });
+
+    phpInstance.addEventListener("ready", () => {
+      console.log("PHP Engine Ready! Waiting for Library...");
+      sendToRN("READY", "Engine Loaded");
+    });
+  } catch (e) {
+    console.error("Setup Failed: " + e.message);
+    sendToRN("LOG", "CRITICAL SETUP ERROR: " + e.message);
+  }
+}
+
+start();

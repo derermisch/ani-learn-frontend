@@ -2,8 +2,9 @@ const { getDefaultConfig } = require("expo/metro-config");
 
 const config = getDefaultConfig(__dirname);
 
-// Add 'phar' and 'html' to assets
 config.resolver.assetExts.push("phar");
 config.resolver.assetExts.push("html");
+config.resolver.assetExts.push("php");
+config.resolver.assetExts.push("txt");
 
 module.exports = config;
