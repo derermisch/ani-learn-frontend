@@ -1,9 +1,6 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { Asset } from "expo-asset";
-import * as DocumentPicker from "expo-document-picker";
-import * as FileSystem from "expo-file-system/legacy";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -14,256 +11,72 @@ import {
   View,
 } from "react-native";
 import { WebView } from "react-native-webview";
+import { UnlockFlow } from "../../components/deck/UnlockFlow";
 import { Deck } from "../../constants/types";
+import { useDeckStatus } from "../../hooks/useDeckStatus"; // <--- NEW HOOK
+import { useSubtitleEngine } from "../../hooks/useSubtitleEngine";
 import { getDeckDetails, unlockDeckWithHash } from "../../services/api";
 
 export default function DeckDetailScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
-  const webViewRef = useRef<WebView>(null);
 
   const [deck, setDeck] = useState<Deck | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // --- ENGINE STATE ---
-  const [engineState, setEngineState] = useState<"loading" | "ready" | "error">(
-    "loading"
+  const engine = useSubtitleEngine();
+
+  // Check if deck is already unlocked locally
+  const { isUnlocked, markAsUnlocked, loadingStatus } = useDeckStatus(
+    id as string
   );
-  const [libLoaded, setLibLoaded] = useState(false);
-  const [pharBase64, setPharBase64] = useState<string | null>(null);
-  const [htmlContent, setHtmlContent] = useState<string | null>(null);
-  const [isWebViewReady, setIsWebViewReady] = useState(false);
-
-  // --- UNLOCK & PREVIEW STATE ---
-  const [isProcessing, setIsProcessing] = useState(false); // Controls spinners
-  const [unlockStatus, setUnlockStatus] = useState<
-    "idle" | "success" | "error"
-  >("idle");
-
-  // New: Stores result from PHP to show in UI
-  const [previewData, setPreviewData] = useState<{
-    hash: string;
-    text: string;
-  } | null>(null);
 
   useEffect(() => {
     if (id) loadDeck(id as string);
-    loadResources();
   }, [id]);
 
-  // --- 1. RESOURCE LOADING (ASSEMBLER) ---
-  const loadResources = async () => {
-    try {
-      console.log("Loading Resources...");
-      const [indexHtml, workerJs, installPhp, processPhp, phar] =
-        await Promise.all([
-          readFile(require("../../assets/php/index.html")),
-          readFile(require("../../assets/php/worker.txt")),
-          readFile(require("../../assets/php/install.php")),
-          readFile(require("../../assets/php/process.php")),
-          readFile(require("../../assets/php/subtitles.phar"), "base64"),
-        ]);
-
-      if (!workerJs) throw new Error("Worker JS failed");
-
-      // Assemble HTML
-      let finalHtml = indexHtml;
-      finalHtml = finalHtml.replace("// __INJECT_WORKER_JS__", () => workerJs);
-
-      const safeInstall = escapeForJsTemplate(installPhp);
-      const safeProcess = escapeForJsTemplate(processPhp);
-      finalHtml = finalHtml.replace("{{INSTALL_PHP}}", () => safeInstall);
-      finalHtml = finalHtml.replace("{{PROCESS_PHP}}", () => safeProcess);
-
-      setHtmlContent(finalHtml);
-      setPharBase64(phar);
-      console.log("HTML Assembled.");
-    } catch (e) {
-      console.error("Resource Load Failed", e);
-      Alert.alert("Error", "Failed to load engine resources.");
-    }
-  };
-
-  // --- 2. AUTOMATIC INJECTION LOGIC ---
-  useEffect(() => {
-    if (isWebViewReady && pharBase64 && !libLoaded) {
-      startChunkInjection();
-    }
-  }, [isWebViewReady, pharBase64, libLoaded]);
-
-  const startChunkInjection = async () => {
-    if (!webViewRef.current) return;
-    console.log("Starting Chunked Injection...");
-
-    webViewRef.current.injectJavaScript(`window.resetPharFile();`);
-
-    const CHUNK_SIZE = 48000;
-    const totalLength = pharBase64!.length;
-    let offset = 0;
-
-    while (offset < totalLength) {
-      const chunk = pharBase64!.slice(offset, offset + CHUNK_SIZE);
-      webViewRef.current.injectJavaScript(`window.appendChunk("${chunk}");`);
-      await new Promise((resolve) => setTimeout(resolve, 15));
-      offset += CHUNK_SIZE;
-    }
-
-    console.log(`Sent ${Math.ceil(totalLength / CHUNK_SIZE)} chunks.`);
-    webViewRef.current.injectJavaScript(`window.installLibrary();`);
-  };
-
-  // --- 3. UI HANDLERS ---
-
-  const handlePickFile = async () => {
-    if (!libLoaded) {
-      Alert.alert("Please wait", "Verification engine is initializing...");
-      return;
-    }
-
-    try {
-      const res = await DocumentPicker.getDocumentAsync({
-        type: "*/*",
-        copyToCacheDirectory: true,
-      });
-
-      if (res.canceled) return;
-
-      // Reset states
-      setIsProcessing(true);
-      setUnlockStatus("idle");
-      setPreviewData(null);
-
-      const fileBase64 = await FileSystem.readAsStringAsync(res.assets[0].uri, {
-        encoding: "base64",
-      });
-
-      if (webViewRef.current) {
-        console.log("Sending file to PHP...");
-        // 1. Reset Buffer
-        webViewRef.current.injectJavaScript(`window.resetSubtitleBuffer();`);
-
-        // 2. Send Chunks
-        const CHUNK_SIZE = 50000;
-        const totalLength = fileBase64.length;
-        let offset = 0;
-
-        while (offset < totalLength) {
-          const chunk = fileBase64.slice(offset, offset + CHUNK_SIZE);
-          webViewRef.current.injectJavaScript(
-            `window.appendSubtitleChunk("${chunk}");`
-          );
-          await new Promise((resolve) => setTimeout(resolve, 10));
-          offset += CHUNK_SIZE;
-        }
-
-        // 3. Process
-        webViewRef.current.injectJavaScript(
-          `window.processBufferedSubtitle();`
-        );
-      }
-    } catch (e: any) {
-      setIsProcessing(false);
-      Alert.alert("File Error", "Could not read the file.");
-    }
-  };
-
-  const handleConfirmUnlock = async () => {
-    if (!previewData || !id) return;
-
-    setIsProcessing(true); // Show loading on the confirm button
-    try {
-      const result = await unlockDeckWithHash(id as string, previewData.hash);
-
-      if (result.success) {
-        setUnlockStatus("success");
-        setPreviewData(null); // Clear preview to show success message
-        Alert.alert("Unlocked!", "Ownership verified. Enjoy studying!", [
-          { text: "OK", onPress: () => router.back() },
-        ]);
-      } else {
-        setUnlockStatus("error");
-        Alert.alert(
-          "Verification Failed",
-          "Subtitle file does not match this deck."
-        );
-      }
-    } catch (e: any) {
-      setUnlockStatus("error");
-      Alert.alert("Error", e.message || "An error occurred");
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleCancelPreview = () => {
-    setPreviewData(null);
-    setIsProcessing(false);
-    setUnlockStatus("idle");
-  };
-
-  // --- 4. WEBVIEW BRIDGE ---
-  const handleWebViewMessage = async (event: any) => {
-    try {
-      const data = JSON.parse(event.nativeEvent.data);
-
-      if (data.type === "LOG") {
-        console.log(" [WebView] >", data.message);
-        if (data.message === "Library installed successfully!") {
-          setLibLoaded(true);
-          setEngineState("ready");
-        }
-        return;
-      }
-
-      if (data.type === "READY") {
-        console.log("WebView Ready. Resetting injection state...");
-        setLibLoaded(false);
-        setIsWebViewReady(true);
-      } else if (data.type === "RESULT") {
-        // PHP finished! Stop processing spinner and show Preview UI
-        setIsProcessing(false);
-        // data.payload contains { hash, preview }
-        setPreviewData({
-          hash: data.payload.hash,
-          text: data.payload.preview,
-        });
-      }
-    } catch (e) {
-      console.error("Bridge Error", e);
-      setIsProcessing(false);
-    }
-  };
-
-  // --- HELPERS ---
   const loadDeck = async (deckId: string) => {
     try {
       const data = await getDeckDetails(deckId);
       setDeck(data);
     } catch (e) {
+      Alert.alert("Error", "Could not load deck");
       router.back();
     } finally {
       setLoading(false);
     }
   };
 
-  const readFile = async (
-    requireId: any,
-    encoding: "utf8" | "base64" = "utf8"
-  ) => {
-    const asset = Asset.fromModule(requireId);
-    await asset.downloadAsync();
-    return FileSystem.readAsStringAsync(asset.localUri!, { encoding });
+  const handleUnlockVerification = async () => {
+    if (!engine.previewData || !id) return;
+
+    try {
+      const result = await unlockDeckWithHash(
+        id as string,
+        engine.previewData.hash
+      );
+
+      if (result.success) {
+        // Success! Save locally and update UI
+        await markAsUnlocked();
+
+        Alert.alert("Success", "Deck Unlocked!", [
+          {
+            text: "Start Studying",
+            onPress: () => router.push(`/deck/${id}/study`),
+          },
+        ]);
+      } else {
+        Alert.alert("Failed", result.message || "Hash mismatch");
+      }
+    } catch (e) {
+      Alert.alert("Error", "Network request failed");
+    } finally {
+      engine.resetPreview();
+    }
   };
 
-  const escapeForJsTemplate = (str: string) => {
-    return str
-      .replace(/\\/g, "\\\\")
-      .replace(/`/g, "\\`")
-      .replace(/\${/g, "\\${");
-  };
-
-  // --- RENDER ---
-  if (loading || !deck) {
+  if (loading || loadingStatus || !deck) {
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" color="#A071FF" />
@@ -272,7 +85,7 @@ export default function DeckDetailScreen() {
   }
 
   const placeholderChar = (deck.title || "U").substring(0, 2).toUpperCase();
-  const isEngineReady = engineState === "ready" && libLoaded;
+  const isReady = engine.engineState === "ready" && engine.libLoaded;
 
   return (
     <View style={styles.container}>
@@ -283,7 +96,6 @@ export default function DeckDetailScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        {/* Cover Art */}
         <View style={styles.coverPlaceholder}>
           <Text style={styles.coverText}>{placeholderChar}</Text>
         </View>
@@ -291,7 +103,6 @@ export default function DeckDetailScreen() {
         <Text style={styles.title}>{deck.title}</Text>
         <Text style={styles.subtitle}>Episode {deck.episode}</Text>
 
-        {/* Metadata Badges */}
         <View style={styles.metaContainer}>
           <View style={styles.badge}>
             <Text style={styles.badgeText}>{deck.lang.toUpperCase()}</Text>
@@ -305,102 +116,44 @@ export default function DeckDetailScreen() {
 
         <View style={styles.divider} />
 
-        {/* --- DYNAMIC UNLOCK SECTION --- */}
-        <View style={styles.unlockContainer}>
-          {/* CASE 1: SHOW PREVIEW */}
-          {previewData ? (
-            <View style={{ width: "100%", alignItems: "center" }}>
-              <Ionicons
-                name="document-text-outline"
-                size={32}
-                color="#A071FF"
-              />
-              <Text style={styles.unlockTitle}>Confirm Subtitle</Text>
-              <Text style={styles.unlockDesc}>
-                We successfully parsed the file. Does this text look correct?
-              </Text>
+        {/* --- DYNAMIC SECTION --- */}
+        {isUnlocked ? (
+          // STATE A: ALREADY UNLOCKED (Study Mode)
+          <View style={styles.studyContainer}>
+            <Ionicons
+              name="school-outline"
+              size={48}
+              color="#A071FF"
+              style={{ marginBottom: 15 }}
+            />
+            <Text style={styles.studyTitle}>Ready to Learn</Text>
+            <Text style={styles.studyDesc}>
+              You have verified ownership of this deck.
+            </Text>
 
-              {/* Text Preview Box */}
-              <View style={styles.previewBox}>
-                <Text style={styles.previewContent}>
-                  {previewData.text}
-                  {"\n"}...
-                </Text>
-              </View>
-
-              {/* Action Buttons */}
-              <View style={styles.actionRow}>
-                <TouchableOpacity
-                  style={[styles.actionBtn, styles.cancelBtn]}
-                  onPress={handleCancelPreview}
-                >
-                  <Text style={styles.cancelBtnText}>Cancel</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.actionBtn, styles.confirmBtn]}
-                  onPress={handleConfirmUnlock}
-                  disabled={isProcessing}
-                >
-                  {isProcessing ? (
-                    <ActivityIndicator color="#000" />
-                  ) : (
-                    <Text style={styles.confirmBtnText}>Verify & Unlock</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            </View>
-          ) : (
-            /* CASE 2: SHOW UPLOAD FORM */
-            <>
-              <Ionicons name="lock-closed" size={32} color="#666" />
-              <Text style={styles.unlockTitle}>Deck Locked</Text>
-              <Text style={styles.unlockDesc}>
-                To access the flashcards for this episode, please upload your
-                subtitle file for verification.
-              </Text>
-
-              <TouchableOpacity
-                style={[
-                  styles.unlockBtn,
-                  { opacity: !isEngineReady || isProcessing ? 0.6 : 1 },
-                ]}
-                onPress={handlePickFile}
-                disabled={!isEngineReady || isProcessing}
-              >
-                {isProcessing ? (
-                  <ActivityIndicator color="#000" />
-                ) : (
-                  <>
-                    <Ionicons
-                      name="cloud-upload-outline"
-                      size={20}
-                      color="#000"
-                    />
-                    <Text style={styles.unlockBtnText}>
-                      {!isEngineReady
-                        ? "Loading Engine..."
-                        : "Upload Subtitle File"}
-                    </Text>
-                  </>
-                )}
-              </TouchableOpacity>
-
-              {unlockStatus === "success" && (
-                <Text style={styles.successText}>
-                  ✓ Verification Successful
-                </Text>
-              )}
-              {isProcessing && !previewData && (
-                <Text style={styles.processingText}>Processing locally...</Text>
-              )}
-            </>
-          )}
-        </View>
+            <TouchableOpacity
+              style={styles.studyBtn}
+              onPress={() => router.push(`/deck/${id}/study`)}
+            >
+              <Text style={styles.studyBtnText}>Start Studying</Text>
+              <Ionicons name="arrow-forward" size={20} color="#000" />
+            </TouchableOpacity>
+          </View>
+        ) : (
+          // STATE B: LOCKED (Unlock Flow)
+          <UnlockFlow
+            isReady={isReady}
+            isProcessing={engine.isProcessing}
+            previewData={engine.previewData}
+            onFileSelect={engine.processFile}
+            onConfirm={handleUnlockVerification}
+            onCancel={engine.resetPreview}
+          />
+        )}
       </ScrollView>
 
-      {/* HIDDEN WEBVIEW */}
-      {htmlContent && (
+      {/* Hidden Engine (Only needed if NOT unlocked yet) */}
+      {!isUnlocked && engine.htmlContent && (
         <View
           style={{
             height: 1,
@@ -412,9 +165,9 @@ export default function DeckDetailScreen() {
           }}
         >
           <WebView
-            ref={webViewRef}
-            source={{ html: htmlContent }}
-            onMessage={handleWebViewMessage}
+            ref={engine.webViewRef}
+            source={{ html: engine.htmlContent }}
+            onMessage={engine.handleMessage}
             originWhitelist={["*"]}
             javaScriptEnabled={true}
             mixedContentMode="always"
@@ -473,84 +226,36 @@ const styles = StyleSheet.create({
     marginVertical: 30,
   },
 
-  // Unlock Section
-  unlockContainer: {
+  // Study Section (Unlocked)
+  studyContainer: {
     width: "100%",
-    backgroundColor: "rgba(255,255,255,0.03)",
+    backgroundColor: "rgba(160, 113, 255, 0.1)", // Slight purple tint
     borderRadius: 16,
-    padding: 25,
+    padding: 30,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#333",
-    borderStyle: "dashed",
+    borderColor: "#A071FF",
   },
-  unlockTitle: {
-    fontSize: 20,
+  studyTitle: {
+    fontSize: 22,
     fontWeight: "bold",
     color: "#FFF",
-    marginTop: 10,
     marginBottom: 10,
   },
-  unlockDesc: {
-    color: "#888",
-    textAlign: "center",
-    marginBottom: 20,
-    lineHeight: 20,
-  },
-  unlockBtn: {
-    backgroundColor: "#FFF",
+  studyDesc: { color: "#CCC", textAlign: "center", marginBottom: 25 },
+  studyBtn: {
+    backgroundColor: "#A071FF",
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    paddingVertical: 15,
-    paddingHorizontal: 30,
+    paddingVertical: 16,
+    paddingHorizontal: 40,
     borderRadius: 30,
+    shadowColor: "#A071FF",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 5,
   },
-  unlockBtnText: { color: "#000", fontWeight: "bold", fontSize: 16 },
-  successText: { color: "#4CAF50", marginTop: 15, fontWeight: "bold" },
-  processingText: { color: "#A071FF", marginTop: 15, fontStyle: "italic" },
-
-  // Preview Styles
-  previewBox: {
-    width: "100%",
-    backgroundColor: "#000",
-    borderRadius: 8,
-    padding: 15,
-    marginVertical: 15,
-    borderWidth: 1,
-    borderColor: "#333",
-  },
-  previewContent: {
-    color: "#CCC",
-    fontFamily: "monospace", // Makes it look like raw text/code
-    fontSize: 12,
-    lineHeight: 18,
-  },
-  actionRow: {
-    flexDirection: "row",
-    gap: 15,
-    width: "100%",
-    justifyContent: "center",
-  },
-  actionBtn: {
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 25,
-    minWidth: 100,
-    alignItems: "center",
-  },
-  cancelBtn: {
-    backgroundColor: "#333",
-  },
-  cancelBtnText: {
-    color: "#FFF",
-    fontWeight: "bold",
-  },
-  confirmBtn: {
-    backgroundColor: "#A071FF",
-  },
-  confirmBtnText: {
-    color: "#000",
-    fontWeight: "bold",
-  },
+  studyBtnText: { color: "#000", fontWeight: "bold", fontSize: 18 },
 });

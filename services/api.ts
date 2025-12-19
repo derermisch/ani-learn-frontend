@@ -97,8 +97,11 @@ export const unlockDeckWithHash = async (
   hash: string
 ): Promise<{ success: boolean; message: string }> => {
   try {
-    // We send a JSON body: { "hash": "..." }
-    const res = await api.post(`/decks/${deckId}/unlock`, { hash });
+    // Send username so backend knows who unlocked it
+    const res = await api.post(`/decks/${deckId}/unlock`, {
+      hash,
+      username: "mobile_user",
+    });
     return res.data;
   } catch (e: any) {
     if (e.response && e.response.data) {
@@ -171,5 +174,34 @@ export const checkFileExistence = async (fileHash: string) => {
     return res.data;
   } catch (e) {
     return { found: false };
+  }
+};
+
+export const getUserLibrary = async (): Promise<{
+  decks: Deck[];
+  words: string[];
+}> => {
+  try {
+    const res = await api.get("/users/mobile_user/library");
+
+    // Map backend format to frontend Deck type
+    const decks = res.data.decks.map((d: any) => ({
+      id: d.id,
+      title: d.title || "Unknown Show",
+      episode: d.episode,
+      lang: d.language || "ja",
+      cards: d.card_count || 0,
+      creator_name: "You", // Or fetch creator
+      cover_image: d.cover_image,
+      is_public: true,
+    }));
+
+    return {
+      decks,
+      words: res.data.words || [],
+    };
+  } catch (e) {
+    console.error("Fetch Library Error", e);
+    return { decks: [], words: [] };
   }
 };

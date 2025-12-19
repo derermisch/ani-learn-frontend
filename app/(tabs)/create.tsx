@@ -21,8 +21,8 @@ import {
   getShows,
   getTaskProgress,
   stopProcessingTask,
-} from "../services/api";
-import { generateFileHash } from "../utils/subtitleParser";
+} from "../../services/api";
+import { generateFileHash } from "../../utils/subtitleParser";
 
 export default function CreateDeckScreen() {
   const router = useRouter();

@@ -1,53 +1,55 @@
-import { useColorScheme } from "@/hooks/use-color-scheme";
-import {
-  DarkTheme,
-  DefaultTheme,
-  ThemeProvider,
-} from "@react-navigation/native";
+import { Colors } from "@/constants/theme";
+import { DarkTheme, Theme, ThemeProvider } from "@react-navigation/native";
+import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
+import { StatusBar } from "expo-status-bar"; // Import StatusBar to force light text
+import * as SystemUI from "expo-system-ui";
 import { useEffect } from "react";
-import "react-native-reanimated";
 
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
+  const [fontsLoaded, error] = useFonts({
+    YeonSung: require("@/assets/fonts/Yeon_Sung/YeonSung-Regular.ttf"),
+    Quicksand: require("@/assets/fonts/Quicksand/Quicksand-VariableFont_wght.ttf"),
+  });
 
   useEffect(() => {
-    SplashScreen.hideAsync();
-  }, []);
+    if (error) throw error;
+  }, [error]);
+
+  useEffect(() => {
+    if (fontsLoaded) {
+      // Set the system background to your dark color
+      SystemUI.setBackgroundColorAsync(Colors.dark.background);
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded]);
+
+  if (!fontsLoaded) return null;
+
+  // We only need ONE theme now
+  const AppTheme: Theme = {
+    ...DarkTheme,
+    colors: {
+      ...DarkTheme.colors,
+      background: Colors.dark.background,
+      text: Colors.dark.text,
+      card: Colors.dark.surface,
+      border: "transparent",
+      primary: Colors.dark.tertiary,
+    },
+  };
 
   return (
-    <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-      <Stack
-        screenOptions={{
-          headerStyle: { backgroundColor: "#151718" },
-          headerTintColor: "#fff",
-          headerShadowVisible: false, // Removes the ugly line under headers
-          contentStyle: { backgroundColor: "#151718" },
-        }}
-      >
-        {/* Home Screen */}
-        <Stack.Screen name="index" options={{ headerShown: false }} />
+    <ThemeProvider value={AppTheme}>
+      {/* Force status bar text to be white */}
+      <StatusBar style="light" />
 
-        {/* Browse Decks */}
-        <Stack.Screen
-          name="browse-decks"
-          options={{
-            headerTitle: "Library",
-            headerBackTitle: "Home",
-          }}
-        />
-
-        {/* Create Deck */}
-        <Stack.Screen
-          name="create-deck"
-          options={{
-            headerShown: false,
-            presentation: "modal", // Makes it slide up like a form
-          }}
-        />
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="deck/[id]" />
       </Stack>
     </ThemeProvider>
   );
