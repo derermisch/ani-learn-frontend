@@ -26,6 +26,7 @@ module.exports = {
         xxxs_4: "4px",
         xxs_6: "6px",
         xxs_8: "8px",
+        sm_12: "12px",
         sm_16: "16px",
         sm_24: "24px",
         md_32: "32px",

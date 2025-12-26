@@ -25,7 +25,7 @@ export const Colors = {
   light: {
     text: "#212124",
     background: "#FCF7F8",
-    surface: "#FFFFFF",
+    surface: "#303036",
     border: "#E5E7EB", // Added
     primary: "#98AAE1",
     tertiary: tintColorLight,
@@ -37,7 +37,7 @@ export const Colors = {
   dark: {
     text: "#FCF7F8",
     background: "#212124",
-    surface: "#1E1E1E",
+    surface: "#303036",
     border: "#2F3336", // Added
     primary: "#98AAE1",
     tertiary: tintColorDark,
@@ -77,6 +77,7 @@ export const SizesScaled = {
 
 export const SizesRaw = {
   tabBarHeight: 60,
+  iconSm: 16,
   iconMd: 24,
   iconLg: 32,
 

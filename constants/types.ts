@@ -28,38 +28,21 @@ export interface TaskProgress {
   message: string;
 }
 
-// export type CardType = "word" | "phrase";
-
-export interface Card {
-  id: string;
-  deck_id: string;
-  type: CardType;
-
-  front: string; // Original (Japanese)
-  back: string; // Translation (English)
-  pronunciation?: string; // Furigana or Romaji (Optional)
-
-  // RELATIONSHIP LINK
-  // If type='word'   -> IDs of phrases this word appears in
-  // If type='phrase' -> IDs of words contained in this phrase
-  related_ids: string[];
-
-  // Mock Progress (for UI testing)
-  status: "new" | "learning" | "review" | "mastered";
-}
-
 // We extend the base FSRS Card interface to include your app's specific content
 export interface Flashcard extends FSRSCard {
   // App-Specific Content
   id: string; // FSRS uses 'number' by default sometimes, but we override to string for UUIDs
   deck_id: string;
   type: CardType;
-  front: string;
+  front: string; // Original (Japanese), if kanji av. then kanji
+  front_furigana?: string;
+  front_romaji?: string;
   back: string;
-  pronunciation?: string;
+  // RELATIONSHIP LINK
+  // If type='word'   -> IDs of phrases this word appears in
+  // If type='phrase' -> IDs of words contained in this phrase
   related_ids: string[]; // Links between words/phrases
-
-  // Optional: You can keep 'status' for UI labels, but FSRS uses 'state' (0=New, 1=Learning, etc.)
+  img_url?: string;
   ui_status?: "new" | "learning" | "review" | "mastered";
 }
 
