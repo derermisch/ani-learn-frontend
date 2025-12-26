@@ -1,25 +1,30 @@
 import { RecentDeckCard } from "@/components/RecentDeckCard";
-import { MOCK_DECKS } from "@/constants/mockData"; // <--- Import Mock Data
-import { Colors, f, s, SizesRaw } from "@/constants/theme";
+import { MOCK_DECKS } from "@/constants/mockData";
+import { Colors, f, s, SizesRaw, SizesScaled } from "@/constants/theme";
 import { Deck } from "@/constants/types";
 import "@/global.css";
 import { getUserLibrary } from "@/services/api";
+import { JsonDatabase } from "@/services/jsonDatabase";
+import * as FileSystem from "expo-file-system/legacy";
 import { Link, useRouter } from "expo-router";
-import { ArrowRightIcon, GearIcon } from "phosphor-react-native";
+import { ArrowRightIcon, GearIcon, Trash, X } from "phosphor-react-native"; // Added Trash icon
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
+  Modal,
   RefreshControl,
   ScrollView,
   Text,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // --- DEBUG CONFIG ---
-const DEBUG_MODE = true; // Set to 'false' to use real API
+const DEBUG_MODE = true;
 
 export default function HomeScreen() {
   const activeColors = Colors["dark"];
@@ -28,6 +33,7 @@ export default function HomeScreen() {
 
   const [recentDecks, setRecentDecks] = useState<Deck[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -37,7 +43,6 @@ export default function HomeScreen() {
     setLoading(true);
 
     if (DEBUG_MODE) {
-      // Simulate network delay for realism
       setTimeout(() => {
         setRecentDecks(MOCK_DECKS);
         setLoading(false);
@@ -55,14 +60,61 @@ export default function HomeScreen() {
     }
   };
 
+  // --- DEBUG ACTIONS ---
+  const handleInspectLibrary = async () => {
+    try {
+      const path = FileSystem.documentDirectory + "library.json";
+      const info = await FileSystem.getInfoAsync(path);
+
+      if (!info.exists) {
+        Alert.alert("Debug", "library.json does not exist yet.");
+        return;
+      }
+
+      const content = await FileSystem.readAsStringAsync(path);
+      const parsed = JSON.parse(content);
+      const prettyJson = JSON.stringify(parsed, null, 2);
+
+      console.log("[DEBUG] library.json content:", prettyJson);
+      Alert.alert(
+        "library.json",
+        "Check console for full output.\n\nPreview:\n" +
+          prettyJson.substring(0, 500) +
+          "..."
+      );
+    } catch (e) {
+      Alert.alert("Error", "Could not read library.json");
+    }
+  };
+
+  const handleResetLibrary = async () => {
+    Alert.alert(
+      "Reset Database",
+      "This will delete library.json and re-seed it with the original Mock Data. All progress will be lost.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Reset",
+          style: "destructive",
+          onPress: async () => {
+            await JsonDatabase.resetDatabase();
+            Alert.alert("Success", "Database reset. Restarting...");
+            // Reload data to reflect changes
+            loadData();
+            setIsSettingsOpen(false);
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <>
       <ScrollView
-        contentContainerClassName="p-sm_16"
         contentContainerStyle={{
-          paddingTop: insets.top + SizesRaw.spacing.sm_16,
+          paddingTop: insets.top + SizesScaled.spacing.sm_16,
           paddingBottom: s(100),
-          minHeight: "100%", // Changed height to minHeight for better scrolling
+          minHeight: "100%",
         }}
         refreshControl={
           <RefreshControl
@@ -73,9 +125,12 @@ export default function HomeScreen() {
           />
         }
       >
-        <View className="flex-column gap-sm_24">
+        <View
+          className="flex-column"
+          style={{ gap: SizesScaled.spacing.sm_24 }}
+        >
           {/* --- HEADER --- */}
-          <View className="flex-row justify-between items-center">
+          <View className="flex-row justify-between items-center p-sm_16">
             <Text
               className="text-foreground tracking-widest font-heading flex-1"
               style={{ fontSize: f(32) }}
@@ -84,7 +139,8 @@ export default function HomeScreen() {
             >
               WELCOME, FABE
             </Text>
-            <TouchableOpacity>
+
+            <TouchableOpacity onPress={() => setIsSettingsOpen(true)}>
               <GearIcon
                 color={activeColors.text}
                 size={SizesRaw.iconMd}
@@ -93,9 +149,9 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
 
-          <View className="flex-col gap-sm_16">
+          <View className="flex-col" style={{ gap: SizesScaled.spacing.sm_16 }}>
             {/* --- RECENT SECTION --- */}
-            <View className="flex-row justify-between items-center">
+            <View className="flex-row justify-between items-center p-sm_16">
               <Text
                 className="text-foreground font-medium font-sans"
                 style={{ fontSize: f(16) }}
@@ -113,7 +169,7 @@ export default function HomeScreen() {
             </View>
 
             {/* Horizontal Carousel */}
-            <View className="w-auto h-auto">
+            <View className="w-auto h-auto pl-sm_16">
               {loading ? (
                 <View className="flex-1 justify-center items-center">
                   <ActivityIndicator
@@ -123,12 +179,13 @@ export default function HomeScreen() {
                 </View>
               ) : recentDecks.length > 0 ? (
                 <FlatList
+                  contentContainerClassName="gap-sm_16"
                   data={recentDecks}
                   keyExtractor={(item) => item.id}
                   renderItem={({ item }) => (
                     <RecentDeckCard
                       deck={item}
-                      onPress={() => router.push(`/deck/${item.id}`)}
+                      onPress={() => router.push(`/deck/${item.id}/study`)}
                     />
                   )}
                   horizontal
@@ -159,7 +216,7 @@ export default function HomeScreen() {
         </View>
 
         {/* --- FOOTER --- */}
-        <View className="items-center mt-xl_128 mb-md_48">
+        <View className="items-center mt-lg_96 mb-md_48">
           <Text
             className="text-foreground text-center mb-1 leading-6 font-sans opacity-50"
             style={{ fontSize: f(14) }}
@@ -172,14 +229,12 @@ export default function HomeScreen() {
           >
             If you got any feedback or ideas, send it to:
           </Text>
-
           <Text
             className="text-foreground font-bold underline mt-2"
             style={{ fontSize: f(14) }}
           >
             fabian.ermisch@googlemail.com
           </Text>
-
           <Text
             className="text-foreground text-center mb-1 leading-6 mt-5 font-sans opacity-50"
             style={{ fontSize: f(14) }}
@@ -188,118 +243,74 @@ export default function HomeScreen() {
           </Text>
         </View>
       </ScrollView>
+
+      {/* --- SETTINGS MODAL --- */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={isSettingsOpen}
+        onRequestClose={() => setIsSettingsOpen(false)}
+        statusBarTranslucent={true}
+      >
+        <TouchableWithoutFeedback onPress={() => setIsSettingsOpen(false)}>
+          <View className="flex-1 bg-black/60 justify-center items-center px-5">
+            <TouchableWithoutFeedback>
+              <View className="bg-surface w-full max-w-sm p-6 rounded-2xl border border-white/10 shadow-xl">
+                {/* Modal Header */}
+                <View className="flex-row justify-between items-center mb-6">
+                  <Text className="text-foreground font-heading text-2xl">
+                    Settings
+                  </Text>
+                  <TouchableOpacity onPress={() => setIsSettingsOpen(false)}>
+                    <X color={activeColors.text} size={24} />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Normal Settings */}
+                <View className="mb-6">
+                  <Text className="text-foreground/50 text-sm">
+                    App Version: 1.0.0 (Alpha)
+                  </Text>
+                </View>
+
+                {/* DEBUG SECTION */}
+                {DEBUG_MODE && (
+                  <View className="border-t border-white/10 pt-4 mt-2">
+                    <Text className="text-red-400 font-bold mb-3 text-xs uppercase tracking-widest">
+                      Debug Zone
+                    </Text>
+
+                    {/* INSPECT BUTTON */}
+                    <TouchableOpacity
+                      onPress={handleInspectLibrary}
+                      className="bg-red-500/10 border border-red-500/50 p-4 rounded-xl flex-row items-center justify-center mb-3"
+                    >
+                      <Text className="text-red-400 font-bold">
+                        Show library.json
+                      </Text>
+                    </TouchableOpacity>
+
+                    {/* RESET BUTTON */}
+                    <TouchableOpacity
+                      onPress={handleResetLibrary}
+                      className="bg-red-500/20 border-2 border-red-500 p-4 rounded-xl flex-row items-center justify-center gap-2"
+                    >
+                      <Trash color="#EF4444" size={20} weight="bold" />
+                      <Text className="text-red-400 font-bold">
+                        Reset Database
+                      </Text>
+                    </TouchableOpacity>
+
+                    <Text className="text-foreground/30 text-xs mt-2 text-center">
+                      WARNING: Resets all learning progress
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </>
   );
 }
-
-// <View className="flex-row">
-//         {/* --- TEST BUTTON: Direct Toggle --- */}
-//         <TouchableOpacity
-//           className="p-2 ml-2 bg-surface rounded-full"
-//           onPress={handleDirectToggle}
-//         >
-//           {scheme === "dark" ? (
-//             <Sun size={24} color={activeColors.tertiary} weight="fill" />
-//           ) : (
-//             <Moon size={24} color={activeColors.text} weight="fill" />
-//           )}
-//         </TouchableOpacity>
-
-//         <TouchableOpacity
-//           className="p-2 ml-2"
-//           onPress={() => setIsSettingsOpen(true)} // Open Modal here
-//         >
-//           <Gear size={28} color={activeColors.text} weight="fill" />
-//         </TouchableOpacity>
-//       </View>
-
-//  {/* --- MODAL (Kept for comparison) --- */}
-//       <Modal
-//         animationType="fade"
-//         transparent={true}
-//         visible={isSettingsOpen}
-//         onRequestClose={() => setIsSettingsOpen(false)}
-//         statusBarTranslucent={true}
-//       >
-//         <TouchableWithoutFeedback onPress={() => setIsSettingsOpen(false)}>
-//           <View className="flex-1 bg-black/50 justify-center items-center px-5">
-//             <TouchableWithoutFeedback>
-//               <View
-//                 className="bg-surface w-full rounded-2xl p-5 shadow-lg"
-//                 style={{ maxWidth: 400 }}
-//               >
-//                 <Text
-//                   className="text-foreground font-heading text-2xl mb-5 text-center"
-//                   style={{ fontSize: f(24) }}
-//                 >
-//                   Settings
-//                 </Text>
-
-//                 <Text className="text-foreground opacity-60 mb-3 font-sans">
-//                   Appearance
-//                 </Text>
-
-//                 {/* Light Mode Option */}
-//                 <TouchableOpacity
-//                   onPress={() => toggleTheme("light")}
-//                   className={`flex-row items-center p-4 rounded-xl mb-3 border ${
-//                     scheme === "light"
-//                       ? "border-tertiary bg-tertiary/10"
-//                       : "border-transparent bg-background"
-//                   }`}
-//                 >
-//                   <Sun
-//                     size={24}
-//                     color={
-//                       scheme === "light"
-//                         ? activeColors.tertiary
-//                         : activeColors.text
-//                     }
-//                   />
-//                   <Text
-//                     className={`ml-3 font-bold text-base ${
-//                       scheme === "light" ? "text-tertiary" : "text-foreground"
-//                     }`}
-//                   >
-//                     Light Mode
-//                   </Text>
-//                 </TouchableOpacity>
-
-//                 {/* Dark Mode Option */}
-//                 <TouchableOpacity
-//                   onPress={() => toggleTheme("dark")}
-//                   className={`flex-row items-center p-4 rounded-xl border ${
-//                     scheme === "dark"
-//                       ? "border-tertiary bg-tertiary/10"
-//                       : "border-transparent bg-background"
-//                   }`}
-//                 >
-//                   <Moon
-//                     size={24}
-//                     color={
-//                       scheme === "dark"
-//                         ? activeColors.tertiary
-//                         : activeColors.text
-//                     }
-//                   />
-//                   <Text
-//                     className={`ml-3 font-bold text-base ${
-//                       scheme === "dark" ? "text-tertiary" : "text-foreground"
-//                     }`}
-//                   >
-//                     Dark Mode
-//                   </Text>
-//                 </TouchableOpacity>
-
-//                 {/* Close Button */}
-//                 <TouchableOpacity
-//                   onPress={() => setIsSettingsOpen(false)}
-//                   className="mt-4 self-center p-2"
-//                 >
-//                   <Text className="text-foreground opacity-50">Close</Text>
-//                 </TouchableOpacity>
-//               </View>
-//             </TouchableWithoutFeedback>
-//           </View>
-//         </TouchableWithoutFeedback>
-//       </Modal>

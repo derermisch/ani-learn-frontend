@@ -21,7 +21,7 @@ export function RecentDeckCard({ deck, onPress, width = 232 }: Props) {
 
   return (
     <TouchableOpacity
-      className="mr-sm_16 relative shadow-lg"
+      className="relative shadow-lg"
       style={{
         width: width,
         height: height,
@@ -62,7 +62,7 @@ export function RecentDeckCard({ deck, onPress, width = 232 }: Props) {
         {/* Title */}
         <View className="flex-row justify-between items-center mb-2">
           <Text
-            className="text-black font-bold flex-1 mr-2"
+            className="text-background font-bold flex-1 mr-2"
             style={{ fontSize: f(18) }}
             numberOfLines={1}
           >
@@ -93,7 +93,7 @@ export function RecentDeckCard({ deck, onPress, width = 232 }: Props) {
         {/* Progress Bar */}
         <View className="w-full bg-black/10 h-1.5 rounded-full overflow-hidden">
           <View
-            className="h-full bg-tertiary"
+            className="h-full bg-primary"
             style={{ width: `${progress * 100}%` }}
           />
         </View>
