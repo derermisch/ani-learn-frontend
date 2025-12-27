@@ -17,7 +17,13 @@ module.exports = {
       },
       fontFamily: {
         heading: ["YeonSung"],
-        sans: ["Quicksand"],
+        japanese: ["KleeOne-Regular"],
+        "japanese-semibold": ["KleeOne-SemiBold"],
+        sans: ["Quicksand-Regular"], // Default: font-sans
+        "sans-light": ["Quicksand-Light"], // Usage: font-sans-light
+        "sans-medium": ["Quicksand-Medium"], // Usage: font-sans-medium
+        "sans-semibold": ["Quicksand-SemiBold"], // Usage: font-sans-bold
+        "sans-bold": ["Quicksand-Bold"], // Usage: font-sans-bold
       },
       // 1. Map Spacing (Padding, Margin, Width, Height, Gap)
       spacing: {

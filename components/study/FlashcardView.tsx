@@ -1,4 +1,6 @@
 import { EnrichedFlashcard } from "@/app/deck/[id]/study";
+import { DictionaryModal } from "@/components/modals/DictionaryModal";
+import { InteractiveText } from "@/components/study/InteractiveText";
 import { Colors, f, SizesRaw } from "@/constants/theme";
 import { Flashcard } from "@/constants/types";
 import { Ionicons } from "@expo/vector-icons";
@@ -27,6 +29,13 @@ export function FlashcardView({ queue, onRate, onBack }: Props) {
   const activeColors = Colors["dark"];
   const insets = useSafeAreaInsets();
   const [isRevealed, setIsRevealed] = useState(false);
+  const [dictModalVisible, setDictModalVisible] = useState(false);
+  const [selectedWord, setSelectedWord] = useState("");
+
+  const handleWordPress = (word: string) => {
+    setSelectedWord(word);
+    setDictModalVisible(true);
+  };
 
   // Animation Value for Border Color
   const revealProgress = useSharedValue(0);
@@ -182,8 +191,8 @@ export function FlashcardView({ queue, onRate, onBack }: Props) {
               >
                 <LinearGradient
                   colors={[
-                    "rgba(33, 33, 36, 0)",
-                    "rgba(33, 33, 36, 0.95)",
+                    `${activeCard.img_url ? "rgba(33, 33, 36, 0)" : "rgb(48, 48, 54, 0)"}`,
+                    `${activeCard.img_url ? "rgba(33, 33, 36, 0.95)" : "rgb(48, 48, 54, 0.95)"}`,
                     "rgba(101, 126, 212, 1)",
                   ]}
                   locations={[0, 0.15, 1]}
@@ -195,24 +204,30 @@ export function FlashcardView({ queue, onRate, onBack }: Props) {
             )}
 
             {/* 3. CONTENT CONTAINER */}
-            <View className="flex-1 items-center justify-center p-6 z-20">
+            <View className="flex-1 items-center justify-center z-20">
               {/* FRONT */}
               <Animated.View
                 layout={Layout.springify()}
                 className="items-center w-full"
               >
-                {activeCard.type === "word" && (
-                  <Text className="text-white/70 text-center font-medium mb-1 text-lg w-[120%]">
-                    {activeCard.front_furigana || ""}
-                  </Text>
-                )}
+                {/* {activeCard.type === "word" &&
+                  activeCard.front_furigana !== activeCard.front && (
+                    <Text
+                      className="text-foreground text-center font-japanese mb-[-6px]"
+                      style={{ fontSize: f(12) }}
+                    >
+                      {activeCard.front_furigana || ""}
+                    </Text>
+                  )} */}
 
-                <Text
-                  className="text-foreground font-heading text-center mb-4"
-                  style={{ fontSize: f(48), lineHeight: f(60) }}
-                >
-                  {activeCard.front}
-                </Text>
+                <View className="text-foreground font-japanese-semibold text-center">
+                  <InteractiveText
+                    text={activeCard.front}
+                    furigana={activeCard.front_furigana}
+                    onPressWord={handleWordPress}
+                    size={f(48)}
+                  />
+                </View>
 
                 {activeCard.type === "word" && renderHighlightedContext()}
 
@@ -282,6 +297,12 @@ export function FlashcardView({ queue, onRate, onBack }: Props) {
           </Animated.View>
         </TouchableOpacity>
       </View>
+
+      <DictionaryModal
+        visible={dictModalVisible}
+        word={selectedWord}
+        onClose={() => setDictModalVisible(false)}
+      />
     </View>
   );
 }

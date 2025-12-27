@@ -1,35 +1,99 @@
 import { Colors } from "@/constants/theme";
+import "@/global.css";
+import { dictionaryService } from "@/services/DictionaryService"; // <--- 1. Import Service
 import { DarkTheme, Theme, ThemeProvider } from "@react-navigation/native";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import { StatusBar } from "expo-status-bar"; // Import StatusBar to force light text
+import { StatusBar } from "expo-status-bar";
 import * as SystemUI from "expo-system-ui";
-import { useEffect } from "react";
+import { useEffect, useState } from "react"; // <--- 2. Import useState
+import { ActivityIndicator, Text, View } from "react-native"; // <--- 3. Import UI components
 
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
+  // Add state to track dictionary readiness
+  const [isDictReady, setIsDictReady] = useState(false);
+
   const [fontsLoaded, error] = useFonts({
     YeonSung: require("@/assets/fonts/Yeon_Sung/YeonSung-Regular.ttf"),
-    Quicksand: require("@/assets/fonts/Quicksand/Quicksand-VariableFont_wght.ttf"),
+    "KleeOne-Regular": require("@/assets/fonts/Klee_One/KleeOne-Regular.ttf"),
+    "KleeOne-SemiBold": require("@/assets/fonts/Klee_One/KleeOne-SemiBold.ttf"),
+    "Quicksand-Light": require("@/assets/fonts/Quicksand/static/Quicksand-Light.ttf"),
+    "Quicksand-Regular": require("@/assets/fonts/Quicksand/static/Quicksand-Regular.ttf"),
+    "Quicksand-Medium": require("@/assets/fonts/Quicksand/static/Quicksand-Medium.ttf"),
+    "Quicksand-SemiBold": require("@/assets/fonts/Quicksand/static/Quicksand-SemiBold.ttf"),
+    "Quicksand-Bold": require("@/assets/fonts/Quicksand/static/Quicksand-Bold.ttf"),
+    // Also include your Japanese font if you added one (e.g. Yuji Syuku)
+    // "YujiSyuku-Regular": require("@/assets/fonts/Yuji_Syuku/YujiSyuku-Regular.ttf"),
   });
 
   useEffect(() => {
     if (error) throw error;
   }, [error]);
 
+  // Main Initialization Effect
   useEffect(() => {
-    if (fontsLoaded) {
-      // Set the system background to your dark color
-      SystemUI.setBackgroundColorAsync(Colors.dark.background);
-      SplashScreen.hideAsync();
+    async function prepare() {
+      // Only start if fonts are ready (so we can use them in the loading screen)
+      if (fontsLoaded) {
+        try {
+          // 1. Set System UI
+          await SystemUI.setBackgroundColorAsync(Colors.dark.background);
+
+          // 2. Hide Native Splash (so we can show our custom "Loading Dict" text)
+          await SplashScreen.hideAsync();
+
+          // 3. Initialize Dictionary (Heavy Operation)
+          await dictionaryService.init();
+        } catch (e) {
+          console.warn("Error initializing app:", e);
+        } finally {
+          // 4. Mark as ready to render the App
+          setIsDictReady(true);
+        }
+      }
     }
+
+    prepare();
   }, [fontsLoaded]);
 
-  if (!fontsLoaded) return null;
+  // --- LOADING STATES ---
 
-  // We only need ONE theme now
+  // 1. Fonts not ready? Show Native Splash (return null)
+  if (!fontsLoaded) {
+    return null;
+  }
+
+  // 2. Fonts ready, but Dict loading? Show Custom Loading Screen
+  if (!isDictReady) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: Colors.dark.background,
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      >
+        <ActivityIndicator size="large" color={Colors.dark.tertiary} />
+        <Text
+          style={{
+            color: Colors.dark.text,
+            marginTop: 20,
+            fontFamily: "Quicksand-Regular",
+            fontSize: 16,
+          }}
+        >
+          Initializing Dictionary...
+        </Text>
+      </View>
+    );
+  }
+
+  // --- MAIN APP ---
+
   const AppTheme: Theme = {
     ...DarkTheme,
     colors: {
@@ -44,9 +108,7 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider value={AppTheme}>
-      {/* Force status bar text to be white */}
       <StatusBar style="light" />
-
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="deck/[id]" />

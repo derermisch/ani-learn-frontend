@@ -1,0 +1,991 @@
+{
+  "phrases": [
+    {
+      "id": "card_n_p1",
+      "front": "昔 妖狐ありけり。",
+      "back": "Long ago, there was a demonic fox.",
+      "related_ids": [
+        "card_n_w14",
+        "card_n_w15",
+        "card_n_w16"
+      ],
+      "deck_id": "1",
+      "type": "phrase"
+    },
+    {
+      "id": "card_n_p2",
+      "front": "そのきつね 九つの尾あり。",
+      "back": "That fox had nine tails.",
+      "related_ids": [
+        "card_n_w17",
+        "card_n_w18",
+        "card_n_w19"
+      ],
+      "deck_id": "1",
+      "type": "phrase"
+    },
+    {
+      "id": "card_n_p3",
+      "front": "その尾 一度振らば山崩れ 津波立つ。",
+      "back": "If that tail was swung even once, mountains would crumble and tsunamis would rise.",
+      "related_ids": [
+        "card_n_w19",
+        "card_n_w20",
+        "card_n_w21",
+        "card_n_w22",
+        "card_n_w23",
+        "card_n_w24"
+      ],
+      "deck_id": "1",
+      "type": "phrase"
+    },
+    {
+      "id": "card_n_p4",
+      "front": "これに困じて人ども",
+      "back": "Troubled by this, the people...",
+      "related_ids": [
+        "card_n_w25",
+        "card_n_w26"
+      ],
+      "deck_id": "1",
+      "type": "phrase"
+    },
+    {
+      "id": "card_n_p5",
+      "front": "忍のやからを集めけり。",
+      "back": "...gathered the ninja clans.",
+      "related_ids": [
+        "card_n_w27",
+        "card_n_w28",
+        "card_n_w29"
+      ],
+      "deck_id": "1",
+      "type": "phrase"
+    },
+    {
+      "id": "card_n_p6",
+      "front": "四代目が来るまで足止めをかけろ！",
+      "back": "Hold them off until the Fourth Hokage arrives!",
+      "related_ids": [
+        "card_n_w30",
+        "card_n_w31",
+        "card_n_w32"
+      ],
+      "deck_id": "1",
+      "type": "phrase"
+    },
+    {
+      "id": "card_n_p7",
+      "front": "これ以上一歩も里に近づけるな！",
+      "back": "Don't let it get one step closer to the village!",
+      "related_ids": [
+        "card_n_w33",
+        "card_n_w34",
+        "card_n_w35",
+        "card_n_w36"
+      ],
+      "deck_id": "1",
+      "type": "phrase"
+    },
+    {
+      "id": "card_n_p8",
+      "front": "僅か１人が忍の者",
+      "back": "Only one ninja...",
+      "related_ids": [
+        "card_n_w37",
+        "card_n_w27",
+        "card_n_w38"
+      ],
+      "deck_id": "1",
+      "type": "phrase"
+    },
+    {
+      "id": "card_n_p9",
+      "front": "生死を懸けこれを封印せしめるが",
+      "back": "...risked his life and death to seal it, but...",
+      "related_ids": [
+        "card_n_w39",
+        "card_n_w40",
+        "card_n_w41",
+        "card_n_w42"
+      ],
+      "deck_id": "1",
+      "type": "phrase"
+    },
+    {
+      "id": "card_n_p10",
+      "front": "その者 死にけり。",
+      "back": "That person died.",
+      "related_ids": [
+        "card_n_w38",
+        "card_n_w43"
+      ],
+      "deck_id": "1",
+      "type": "phrase"
+    },
+    {
+      "id": "card_n_p11",
+      "front": "その忍の者 名を",
+      "back": "The name of that ninja...",
+      "related_ids": [
+        "card_n_w27",
+        "card_n_w38"
+      ],
+      "deck_id": "1",
+      "type": "phrase"
+    },
+    {
+      "id": "card_n_p12",
+      "front": "四代目 火影と申す。",
+      "back": "...is called the Fourth Hokage.",
+      "related_ids": [
+        "card_n_w30",
+        "card_n_w44",
+        "card_n_w45"
+      ],
+      "deck_id": "1",
+      "type": "phrase"
+    },
+    {
+      "id": "card_n_p13",
+      "front": "ヒャ～ッハッハッハ…！",
+      "back": "Hya-hahahaha...!",
+      "related_ids": [],
+      "deck_id": "1",
+      "type": "phrase"
+    },
+    {
+      "id": "card_n_p46",
+      "front": "ヘッヘッヘ～！こら ナルト！",
+      "back": "Heh heh heh~! Hey! Naruto!",
+      "related_ids": [
+        "card_n_w57",
+        "card_n_w58"
+      ],
+      "deck_id": "1",
+      "type": "phrase"
+    },
+    {
+      "id": "card_n_p47",
+      "front": "何ちゅう罰当たりなことをしたんだ！",
+      "back": "What kind of sacrilegious thing did you do?!",
+      "related_ids": [
+        "card_n_w59",
+        "card_n_w60",
+        "card_n_w61"
+      ],
+      "deck_id": "1",
+      "type": "phrase"
+    },
+    {
+      "id": "card_n_p48",
+      "front": "きょうという きょうは絶対許さんぞ！",
+      "back": "Today of all days, I absolutely won't forgive you!",
+      "related_ids": [
+        "card_n_w62",
+        "card_n_w63",
+        "card_n_w64"
+      ],
+      "deck_id": "1",
+      "type": "phrase"
+    },
+    {
+      "id": "card_n_p49",
+      "front": "ハ～ッハッハッハッ！うっせぇんだってばよ！",
+      "back": "Hahaha! Shut up, believe it!",
+      "related_ids": [
+        "card_n_w65",
+        "card_n_w66"
+      ],
+      "deck_id": "1",
+      "type": "phrase"
+    },
+    {
+      "id": "card_n_p50",
+      "front": "お前らさ お前らさあ～んなマネできねえだろ？",
+      "back": "Hey, you guys, you guys can't pull off a stunt like that, right?",
+      "related_ids": [
+        "card_n_w67",
+        "card_n_w68",
+        "card_n_w69"
+      ],
+      "deck_id": "1",
+      "type": "phrase"
+    },
+    {
+      "id": "card_n_p51",
+      "front": "だけど俺にはできる俺は すごいんだってばよ！",
+      "back": "But I can do it! I'm amazing, believe it!",
+      "related_ids": [
+        "card_n_w70",
+        "card_n_w71",
+        "card_n_w72",
+        "card_n_w66"
+      ],
+      "deck_id": "1",
+      "type": "phrase"
+    },
+    {
+      "id": "card_n_p52",
+      "front": "大変です 三代目！火影様！",
+      "back": "It's terrible, Third Hokage! Lord Hokage!",
+      "related_ids": [
+        "card_n_w73",
+        "card_n_w74",
+        "card_n_w75"
+      ],
+      "deck_id": "1",
+      "type": "phrase"
+    },
+    {
+      "id": "card_n_p53",
+      "front": "何じゃ？ またナルトのヤツが",
+      "back": "What is it? Did that Naruto guy again...",
+      "related_ids": [
+        "card_n_w76",
+        "card_n_w77"
+      ],
+      "deck_id": "1",
+      "type": "phrase"
+    },
+    {
+      "id": "card_n_p54",
+      "front": "何か しでかしでもしたか？",
+      "back": "...do something mischievous?",
+      "related_ids": [
+        "card_n_w78"
+      ],
+      "deck_id": "1",
+      "type": "phrase"
+    },
+    {
+      "id": "card_n_p55",
+      "front": "はい 歴代火影様たちの顔岩に…｡",
+      "back": "Yes, on the faces carved into the rock of the previous Hokages...",
+      "related_ids": [
+        "card_n_w79",
+        "card_n_w75",
+        "card_n_w80"
+      ],
+      "deck_id": "1",
+      "type": "phrase"
+    },
+    {
+      "id": "card_n_p56",
+      "front": "恐れ多くも落書きを…｡",
+      "back": "...they dared to graffiti them.",
+      "related_ids": [
+        "card_n_w81",
+        "card_n_w82"
+      ],
+      "deck_id": "1",
+      "type": "phrase"
+    }
+  ],
+  "words": [
+    {
+      "id": "card_n_w14",
+      "front": "昔",
+      "front_furigana": "むかし",
+      "front_romaji": "mukashi",
+      "back": "Long ago, the past",
+      "related_ids": [
+        "card_n_p1"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    },
+    {
+      "id": "card_n_w15",
+      "front": "妖狐",
+      "front_furigana": "ようこ",
+      "front_romaji": "yōko",
+      "back": "Demonic fox, kitsune",
+      "related_ids": [
+        "card_n_p1"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    },
+    {
+      "id": "card_n_w16",
+      "front": "ありけり",
+      "front_furigana": "ありけり",
+      "front_romaji": "arikeru",
+      "back": "(Classical) There was/were",
+      "related_ids": [
+        "card_n_p1"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    },
+    {
+      "id": "card_n_w17",
+      "front": "きつね",
+      "front_furigana": "きつね",
+      "front_romaji": "kitsune",
+      "back": "Fox",
+      "related_ids": [
+        "card_n_p2"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    },
+    {
+      "id": "card_n_w18",
+      "front": "九つ",
+      "front_furigana": "ここのつ",
+      "front_romaji": "kokonotsu",
+      "back": "Nine (things)",
+      "related_ids": [
+        "card_n_p2"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    },
+    {
+      "id": "card_n_w19",
+      "front": "尾",
+      "front_furigana": "お",
+      "front_romaji": "o",
+      "back": "Tail",
+      "related_ids": [
+        "card_n_p2",
+        "card_n_p3"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    },
+    {
+      "id": "card_n_w20",
+      "front": "一度",
+      "front_furigana": "いちど",
+      "front_romaji": "ichido",
+      "back": "Once, one time",
+      "related_ids": [
+        "card_n_p3"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    },
+    {
+      "id": "card_n_w21",
+      "front": "振らば",
+      "front_furigana": "ふらば",
+      "front_romaji": "furaba",
+      "back": "(Classical conditional) If it swings/is swung",
+      "related_ids": [
+        "card_n_p3"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    },
+    {
+      "id": "card_n_w22",
+      "front": "山崩れ",
+      "front_furigana": "やまくずれ",
+      "front_romaji": "yamakuzure",
+      "back": "Landslide, mountain collapse",
+      "related_ids": [
+        "card_n_p3"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    },
+    {
+      "id": "card_n_w23",
+      "front": "津波",
+      "front_furigana": "つなみ",
+      "front_romaji": "tsunami",
+      "back": "Tsunami, tidal wave",
+      "related_ids": [
+        "card_n_p3"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    },
+    {
+      "id": "card_n_w24",
+      "front": "立つ",
+      "front_furigana": "たつ",
+      "front_romaji": "tatsu",
+      "back": "To rise, to stand up, to occur",
+      "related_ids": [
+        "card_n_p3"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    },
+    {
+      "id": "card_n_w25",
+      "front": "困じる",
+      "front_furigana": "こんじる",
+      "front_romaji": "konjiru",
+      "back": "To be troubled, to be distressed",
+      "related_ids": [
+        "card_n_p4"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    },
+    {
+      "id": "card_n_w26",
+      "front": "人ども",
+      "front_furigana": "ひとども",
+      "front_romaji": "hitodomo",
+      "back": "People (plural)",
+      "related_ids": [
+        "card_n_p4"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    },
+    {
+      "id": "card_n_w27",
+      "front": "忍",
+      "front_furigana": "しのび",
+      "front_romaji": "shinobi",
+      "back": "Ninja",
+      "related_ids": [
+        "card_n_p5",
+        "card_n_p8",
+        "card_n_p11"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    },
+    {
+      "id": "card_n_w28",
+      "front": "やから",
+      "front_furigana": "やから",
+      "front_romaji": "yakara",
+      "back": "Clan, family, group",
+      "related_ids": [
+        "card_n_p5"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    },
+    {
+      "id": "card_n_w29",
+      "front": "集める",
+      "front_furigana": "あつめる",
+      "front_romaji": "atsumeru",
+      "back": "To gather, to collect",
+      "related_ids": [
+        "card_n_p5"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    },
+    {
+      "id": "card_n_w30",
+      "front": "四代目",
+      "front_furigana": "よんだいめ",
+      "front_romaji": "yondaime",
+      "back": "The Fourth (generation/successor)",
+      "related_ids": [
+        "card_n_p6",
+        "card_n_p12"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    },
+    {
+      "id": "card_n_w31",
+      "front": "来る",
+      "front_furigana": "くる",
+      "front_romaji": "kuru",
+      "back": "To come, to arrive",
+      "related_ids": [
+        "card_n_p6"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    },
+    {
+      "id": "card_n_w32",
+      "front": "足止めをかける",
+      "front_furigana": "あしどめをかける",
+      "front_romaji": "ashidome o kakeru",
+      "back": "To hold back, to detain, to stall",
+      "related_ids": [
+        "card_n_p6"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    },
+    {
+      "id": "card_n_w33",
+      "front": "これ以上",
+      "front_furigana": "これいじょう",
+      "front_romaji": "kore ijō",
+      "back": "Any more than this, beyond this",
+      "related_ids": [
+        "card_n_p7"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    },
+    {
+      "id": "card_n_w34",
+      "front": "一歩",
+      "front_furigana": "いっぽ",
+      "front_romaji": "ippo",
+      "back": "One step",
+      "related_ids": [
+        "card_n_p7"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    },
+    {
+      "id": "card_n_w35",
+      "front": "里",
+      "front_furigana": "さと",
+      "front_romaji": "sato",
+      "back": "Village, hometown",
+      "related_ids": [
+        "card_n_p7"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    },
+    {
+      "id": "card_n_w36",
+      "front": "近づける",
+      "front_furigana": "ちかづける",
+      "front_romaji": "chikazukeru",
+      "back": "To bring closer, to let approach",
+      "related_ids": [
+        "card_n_p7"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    },
+    {
+      "id": "card_n_w37",
+      "front": "僅か",
+      "front_furigana": "わずか",
+      "front_romaji": "wazuka",
+      "back": "Only a little, slight, few",
+      "related_ids": [
+        "card_n_p8"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    },
+    {
+      "id": "card_n_w38",
+      "front": "者",
+      "front_furigana": "もの",
+      "front_romaji": "mono",
+      "back": "Person, individual",
+      "related_ids": [
+        "card_n_p8",
+        "card_n_p10",
+        "card_n_p11"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    },
+    {
+      "id": "card_n_w39",
+      "front": "生死",
+      "front_furigana": "せいし",
+      "front_romaji": "seishi",
+      "back": "Life and death",
+      "related_ids": [
+        "card_n_p9"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    },
+    {
+      "id": "card_n_w40",
+      "front": "懸ける",
+      "front_furigana": "かける",
+      "front_romaji": "kakeru",
+      "back": "To risk, to bet",
+      "related_ids": [
+        "card_n_p9"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    },
+    {
+      "id": "card_n_w41",
+      "front": "封印",
+      "front_furigana": "ふういん",
+      "front_romaji": "fūin",
+      "back": "Seal, sealing",
+      "related_ids": [
+        "card_n_p9"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    },
+    {
+      "id": "card_n_w42",
+      "front": "せしめる",
+      "front_furigana": "せしめる",
+      "front_romaji": "seshimeru",
+      "back": "(Classical/Formal) To cause to do, to manage to do",
+      "related_ids": [
+        "card_n_p9"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    },
+    {
+      "id": "card_n_w43",
+      "front": "死ぬ",
+      "front_furigana": "しぬ",
+      "front_romaji": "shinu",
+      "back": "To die",
+      "related_ids": [
+        "card_n_p10"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    },
+    {
+      "id": "card_n_w44",
+      "front": "火影",
+      "front_furigana": "ほかげ",
+      "front_romaji": "Hokage",
+      "back": "Hokage (Fire Shadow, village leader title)",
+      "related_ids": [
+        "card_n_p12"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    },
+    {
+      "id": "card_n_w45",
+      "front": "申す",
+      "front_furigana": "もうす",
+      "front_romaji": "mōsu",
+      "back": "To say, to be called (humble/formal)",
+      "related_ids": [
+        "card_n_p12"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    },
+    {
+      "id": "card_n_w57",
+      "front": "こら",
+      "front_furigana": "こら",
+      "front_romaji": "kora",
+      "back": "Hey! / Stop it! (used to scold)",
+      "related_ids": [
+        "card_n_p46"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    },
+    {
+      "id": "card_n_w58",
+      "front": "ナルト",
+      "front_furigana": "なると",
+      "front_romaji": "Naruto",
+      "back": "Naruto (Character name)",
+      "related_ids": [
+        "card_n_p46"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    },
+    {
+      "id": "card_n_w59",
+      "front": "何ちゅう",
+      "front_furigana": "なんちゅう",
+      "front_romaji": "nanchuu",
+      "back": "What kind of (colloquial contraction of 何という)",
+      "related_ids": [
+        "card_n_p47"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    },
+    {
+      "id": "card_n_w60",
+      "front": "罰当たり",
+      "front_furigana": "ばちあたり",
+      "front_romaji": "bachi atari",
+      "back": "Sacrilegious; deserving of divine punishment",
+      "related_ids": [
+        "card_n_p47"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    },
+    {
+      "id": "card_n_w61",
+      "front": "した",
+      "front_furigana": "した",
+      "front_romaji": "shita",
+      "back": "Did (past tense of する)",
+      "related_ids": [
+        "card_n_p47"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    },
+    {
+      "id": "card_n_w62",
+      "front": "きょう",
+      "front_furigana": "きょう",
+      "front_romaji": "kyou",
+      "back": "Today",
+      "related_ids": [
+        "card_n_p48"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    },
+    {
+      "id": "card_n_w63",
+      "front": "絶対",
+      "front_furigana": "ぜったい",
+      "front_romaji": "zettai",
+      "back": "Absolutely; definitely",
+      "related_ids": [
+        "card_n_p48"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    },
+    {
+      "id": "card_n_w64",
+      "front": "許さん",
+      "front_furigana": "ゆるさん",
+      "front_romaji": "yurusan",
+      "back": "Won't forgive (colloquial/masculine negative form of 許す)",
+      "related_ids": [
+        "card_n_p48"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    },
+    {
+      "id": "card_n_w65",
+      "front": "うっせぇ",
+      "front_furigana": "うっせぇ",
+      "front_romaji": "ussee",
+      "back": "Shut up! (Slang/contraction of うるさい)",
+      "related_ids": [
+        "card_n_p49"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    },
+    {
+      "id": "card_n_w66",
+      "front": "だってばよ",
+      "front_furigana": "だってばよ",
+      "front_romaji": "dattebayo",
+      "back": "Believe it! (Naruto's catchphrase/sentence ender)",
+      "related_ids": [
+        "card_n_p49",
+        "card_n_p51"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    },
+    {
+      "id": "card_n_w67",
+      "front": "お前ら",
+      "front_furigana": "おまえら",
+      "front_romaji": "omaera",
+      "back": "You guys (plural, informal/rude)",
+      "related_ids": [
+        "card_n_p50"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    },
+    {
+      "id": "card_n_w68",
+      "front": "マネ",
+      "front_furigana": "まね",
+      "front_romaji": "mane",
+      "back": "Imitation; stunt; trick",
+      "related_ids": [
+        "card_n_p50"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    },
+    {
+      "id": "card_n_w69",
+      "front": "できねえ",
+      "front_furigana": "できねえ",
+      "front_romaji": "dekinee",
+      "back": "Cannot do (Slang/contraction of できない)",
+      "related_ids": [
+        "card_n_p50"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    },
+    {
+      "id": "card_n_w70",
+      "front": "だけど",
+      "front_furigana": "だけど",
+      "front_romaji": "dakedo",
+      "back": "But; however",
+      "related_ids": [
+        "card_n_p51"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    },
+    {
+      "id": "card_n_w71",
+      "front": "俺",
+      "front_furigana": "おれ",
+      "front_romaji": "ore",
+      "back": "I (masculine, informal)",
+      "related_ids": [
+        "card_n_p51"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    },
+    {
+      "id": "card_n_w72",
+      "front": "すごい",
+      "front_furigana": "すごい",
+      "front_romaji": "sugoi",
+      "back": "Amazing; incredible",
+      "related_ids": [
+        "card_n_p51"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    },
+    {
+      "id": "card_n_w73",
+      "front": "大変",
+      "front_furigana": "たいへん",
+      "front_romaji": "taihen",
+      "back": "Terrible; serious; difficult",
+      "related_ids": [
+        "card_n_p52"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    },
+    {
+      "id": "card_n_w74",
+      "front": "三代目",
+      "front_furigana": "さんだいめ",
+      "front_romaji": "sandaime",
+      "back": "Third generation/Third",
+      "related_ids": [
+        "card_n_p52"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    },
+    {
+      "id": "card_n_w75",
+      "front": "火影様",
+      "front_furigana": "ほかげさま",
+      "front_romaji": "hokage sama",
+      "back": "Lord Hokage",
+      "related_ids": [
+        "card_n_p52",
+        "card_n_p55"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    },
+    {
+      "id": "card_n_w76",
+      "front": "何じゃ",
+      "front_furigana": "なんじゃ",
+      "front_romaji": "nan ja",
+      "back": "What is it? (colloquial/old-fashioned)",
+      "related_ids": [
+        "card_n_p53"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    },
+    {
+      "id": "card_n_w77",
+      "front": "ヤツ",
+      "front_furigana": "やつ",
+      "front_romaji": "yatsu",
+      "back": "Guy; fellow (often derogatory or familiar)",
+      "related_ids": [
+        "card_n_p53"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    },
+    {
+      "id": "card_n_w78",
+      "front": "しでかし",
+      "front_furigana": "しでかし",
+      "front_romaji": "shidekashi",
+      "back": "Mischief; blunder (noun form of しでかす)",
+      "related_ids": [
+        "card_n_p54"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    },
+    {
+      "id": "card_n_w79",
+      "front": "歴代",
+      "front_furigana": "れきだい",
+      "front_romaji": "rekidai",
+      "back": "Successive generations; previous",
+      "related_ids": [
+        "card_n_p55"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    },
+    {
+      "id": "card_n_w80",
+      "front": "顔岩",
+      "front_furigana": "かお・いわ",
+      "front_romaji": "kao iwa",
+      "back": "Face rock (The carved faces of the Hokages)",
+      "related_ids": [
+        "card_n_p55"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    },
+    {
+      "id": "card_n_w81",
+      "front": "恐れ多くも",
+      "front_furigana": "おそれおおくも",
+      "front_romaji": "osore ooku mo",
+      "back": "Daringly; presumptuously (often used sarcastically or in formal reports of transgression)",
+      "related_ids": [
+        "card_n_p56"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    },
+    {
+      "id": "card_n_w82",
+      "front": "落書き",
+      "front_furigana": "らくがき",
+      "front_romaji": "rakugaki",
+      "back": "Graffiti; scribble",
+      "related_ids": [
+        "card_n_p56"
+      ],
+      "deck_id": "1",
+      "type": "word"
+    }
+  ]
+}

@@ -3,35 +3,22 @@
 @tailwind utilities;
 
 @layer base {
-  /* 1. Defaults (Light Mode) */
   :root {
+    /* FORCE DARK THEME 
+      These are now the ONLY variables the app knows.
+      It will ignore the system's light/dark setting.
+    */
+
     --color-primary: #98aae1;
     --color-tertiary: #61e786;
 
-    /* Text is DARK in light mode */
-    --color-text: #212124;
-    --color-icon: #687076;
+    /* Text is LIGHT (for dark background) */
+    --color-text: #fcf7f8;
+    --color-icon: #9ba1a6;
 
-    /* Background is LIGHT in light mode */
-    --color-background: #fcf7f8;
-    --color-surface: #ffffff;
-    --color-border: #e5e7eb;
-  }
-
-  /* 2. Overrides (Dark Mode) - CHANGED THIS BLOCK */
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --color-primary: #98aae1;
-      --color-tertiary: #61e786;
-
-      /* Text is LIGHT in dark mode */
-      --color-text: #fcf7f8;
-      --color-icon: #9ba1a6;
-
-      /* Background is DARK in dark mode */
-      --color-background: #212124;
-      --color-surface: #303036;
-      --color-border: #2f3336;
-    }
+    /* Background is DARK */
+    --color-background: #212124;
+    --color-surface: #303036;
+    --color-border: #2f3336;
   }
 }

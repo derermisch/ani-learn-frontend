@@ -80,7 +80,7 @@ export default function StudyScreen() {
       if (card.type === "word" && card.related_ids?.length) {
         // Find the first related ID that is actually a PHRASE
         for (const relatedId of card.related_ids) {
-          console.log(relatedId);
+          // console.log(relatedId);
           const found = allDeckCards.find(
             (c) => c.id === relatedId && c.type === "phrase"
           );
