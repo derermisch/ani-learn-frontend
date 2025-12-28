@@ -1,45 +1,41 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useEffect, useState } from "react";
+import { storageService } from "@/services/StorageService";
+import { useCallback, useEffect, useState } from "react";
 
-const STORAGE_KEY = "UNLOCKED_DECKS";
-
-export function useDeckStatus(deckId: string | undefined) {
+export function useDeckStatus(deckId: string) {
   const [isUnlocked, setIsUnlocked] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loadingStatus, setLoadingStatus] = useState(true);
 
+  // Check DB on mount
   useEffect(() => {
-    if (deckId) checkStatus();
+    checkStatus();
   }, [deckId]);
 
-  const checkStatus = async () => {
+  const checkStatus = useCallback(async () => {
     try {
-      const jsonValue = await AsyncStorage.getItem(STORAGE_KEY);
-      const unlockedList = jsonValue != null ? JSON.parse(jsonValue) : [];
-      if (unlockedList.includes(deckId)) {
-        setIsUnlocked(true);
-      }
+      setLoadingStatus(true);
+      const unlocked = await storageService.isDeckUnlocked(deckId);
+      setIsUnlocked(unlocked);
     } catch (e) {
-      console.error("Failed to load deck status", e);
+      console.error("Failed to check deck status", e);
     } finally {
-      setLoading(false);
+      setLoadingStatus(false);
     }
-  };
+  }, [deckId]);
 
-  const markAsUnlocked = async () => {
-    if (!deckId) return;
+  // Called after successful API verification
+  const markAsUnlocked = async (hash: string, deckTitle?: string) => {
     try {
-      const jsonValue = await AsyncStorage.getItem(STORAGE_KEY);
-      const unlockedList = jsonValue != null ? JSON.parse(jsonValue) : [];
-
-      if (!unlockedList.includes(deckId)) {
-        unlockedList.push(deckId);
-        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(unlockedList));
-      }
+      await storageService.unlockDeck(deckId, hash, deckTitle);
       setIsUnlocked(true);
     } catch (e) {
-      console.error("Failed to save deck status", e);
+      console.error("Failed to save unlock status", e);
     }
   };
 
-  return { isUnlocked, markAsUnlocked, loadingStatus: loading };
+  return {
+    isUnlocked,
+    loadingStatus,
+    markAsUnlocked,
+    refreshStatus: checkStatus,
+  };
 }

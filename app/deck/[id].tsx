@@ -1,3 +1,4 @@
+import { LocalCard, storageService } from "@/services/StorageService";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -15,7 +16,11 @@ import { UnlockFlow } from "../../components/deck/UnlockFlow";
 import { Deck } from "../../constants/types";
 import { useDeckStatus } from "../../hooks/useDeckStatus"; // <--- NEW HOOK
 import { useSubtitleEngine } from "../../hooks/useSubtitleEngine";
-import { getDeckDetails, unlockDeckWithHash } from "../../services/api";
+import {
+  getDeckCards,
+  getDeckDetails,
+  unlockDeckWithHash,
+} from "../../services/api";
 
 export default function DeckDetailScreen() {
   const { id } = useLocalSearchParams();
@@ -47,6 +52,78 @@ export default function DeckDetailScreen() {
     }
   };
 
+  // HELPER: Transform Backend Data -> List of Phrases AND Words
+  const processBackendCards = (
+    backendCards: any[],
+    deckId: string
+  ): LocalCard[] => {
+    const allItems: LocalCard[] = [];
+
+    backendCards.forEach((c, index) => {
+      // --- 1. PREPARE PHRASE CARD ---
+      let phraseId = c.id || (typeof c._id === "string" ? c._id : c._id?.$oid);
+
+      if (!phraseId) {
+        phraseId = `temp_phrase_${deckId}_${index}_${Date.now()}`;
+      }
+
+      const translations = c.translation || {};
+      const translationObj =
+        translations["gpt-4o-mini"] ||
+        translations["llama3.1"] ||
+        (Object.values(translations)[0] as any);
+      const phraseBack = translationObj?.result || "No translation";
+
+      const tokenMap: Record<string, string> = {};
+
+      // --- 2. EXTRACT WORDS FROM TOKENS ---
+      if (c.tokens && Array.isArray(c.tokens)) {
+        c.tokens.forEach((t: any, tokenIdx: number) => {
+          const modelRes =
+            t.model_to_result?.["gpt-4o-mini"] ||
+            t.model_to_result?.["llama3.1"];
+          const entryId = modelRes?.selected_entry_id;
+
+          // If AI picked an entry, we create a Word Card
+          if (entryId && t.token) {
+            tokenMap[t.token] = entryId; // Add to phrase's map
+
+            // Create the WORD Card
+            const wordCard: LocalCard = {
+              id: `${phraseId}_word_${tokenIdx}`, // Deterministic ID linked to phrase
+              deck_id: deckId,
+              type: "word",
+              front: t.token,
+              back: "", // We rely on Dictionary DB to fetch definition later
+              dictionary_entry_id: entryId,
+              context_phrase_id: phraseId, // Link to Parent
+              token_map: "{}",
+              raw_data: JSON.stringify(t), // Store token raw data
+            };
+            allItems.push(wordCard);
+          }
+        });
+      }
+
+      // --- 3. CREATE PHRASE CARD ---
+      const phraseCard: LocalCard = {
+        id: phraseId,
+        deck_id: deckId,
+        type: "phrase",
+        front: c.phrase || "",
+        back: phraseBack,
+        dictionary_entry_id: undefined, // Phrases don't map to 1 dict entry
+        context_phrase_id: undefined,
+        token_map: JSON.stringify(tokenMap),
+        raw_data: JSON.stringify(c),
+      };
+
+      allItems.push(phraseCard);
+    });
+
+    return allItems;
+  };
+
   const handleUnlockVerification = async () => {
     if (!engine.previewData || !id) return;
 
@@ -57,10 +134,25 @@ export default function DeckDetailScreen() {
       );
 
       if (result.success) {
-        // Success! Save locally and update UI
-        await markAsUnlocked();
+        // --- 1. Fetch & Save Data ---
+        try {
+          console.log("🔓 Unlocked! Fetching cards...");
+          const backendCards = await getDeckCards(id as string);
 
-        Alert.alert("Success", "Deck Unlocked!", [
+          const localCards = processBackendCards(backendCards, id as string);
+          await storageService.saveCardsForDeck(id as string, localCards);
+        } catch (err) {
+          console.error("❌ Failed to save cards:", err);
+          Alert.alert(
+            "Warning",
+            "Deck unlocked, but failed to download cards."
+          );
+        }
+
+        // --- 2. Mark as Unlocked ---
+        await markAsUnlocked(engine.previewData.hash, deck?.title);
+
+        Alert.alert("Success", "Deck Unlocked & Downloaded!", [
           {
             text: "Start Studying",
             onPress: () => router.push(`/deck/${id}/study`),

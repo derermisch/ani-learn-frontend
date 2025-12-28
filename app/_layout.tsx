@@ -1,6 +1,7 @@
 import { Colors } from "@/constants/theme";
 import "@/global.css";
 import { dictionaryService } from "@/services/DictionaryService"; // <--- 1. Import Service
+import { storageService } from "@/services/StorageService";
 import { DarkTheme, Theme, ThemeProvider } from "@react-navigation/native";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
@@ -45,8 +46,11 @@ export default function RootLayout() {
           // 2. Hide Native Splash (so we can show our custom "Loading Dict" text)
           await SplashScreen.hideAsync();
 
-          // 3. Initialize Dictionary (Heavy Operation)
-          await dictionaryService.init();
+          // Initialize both services
+          await Promise.all([
+            dictionaryService.init(),
+            storageService.init(), // <--- Add this
+          ]);
         } catch (e) {
           console.warn("Error initializing app:", e);
         } finally {

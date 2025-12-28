@@ -5,9 +5,19 @@ import { Deck } from "@/constants/types";
 import "@/global.css";
 import { getUserLibrary } from "@/services/api";
 import { JsonDatabase } from "@/services/jsonDatabase";
+import { storageService } from "@/services/StorageService";
+import { Ionicons } from "@expo/vector-icons";
 import * as FileSystem from "expo-file-system/legacy";
 import { Link, useRouter } from "expo-router";
-import { ArrowRightIcon, GearIcon, Trash, X } from "phosphor-react-native"; // Added Trash icon
+import * as Sharing from "expo-sharing";
+import {
+  ArrowRightIcon,
+  Database,
+  GearIcon,
+  LockKey,
+  Trash,
+  X,
+} from "phosphor-react-native"; // Import icon
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -89,19 +99,84 @@ export default function HomeScreen() {
 
   const handleResetLibrary = async () => {
     Alert.alert(
-      "Reset Database",
-      "This will delete library.json and re-seed it with the original Mock Data. All progress will be lost.",
+      "Reset Database?",
+      "This will wipe all card progress (FSRS data).",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Wipe it",
+          style: "destructive",
+          onPress: async () => {
+            await JsonDatabase.resetDatabase();
+            Alert.alert(
+              "Done",
+              "Database reset to mock data. Please restart app."
+            );
+          },
+        },
+      ]
+    );
+  };
+
+  const handleLockAllDecks = async () => {
+    Alert.alert(
+      "Lock All Decks?",
+      "You will lose access to all decks until you verify them again.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Lock All",
+          style: "destructive",
+          onPress: async () => {
+            await storageService.lockAllDecks();
+            Alert.alert("Done", "All decks are now locked.");
+          },
+        },
+      ]
+    );
+  };
+
+  const handleExportDB = async () => {
+    try {
+      // 1. Force WAL Merge so the main file is up to date
+      await storageService.forceCheckpoint();
+
+      // 2. Sanity Check: Log internal count
+      const count = await storageService.getCardCount();
+      console.log(`[Export] Current card count in DB: ${count}`);
+
+      // 3. Locate file
+      const dbUri = FileSystem.documentDirectory + "SQLite/storage.db";
+
+      // 4. Share
+      if (!(await FileSystem.getInfoAsync(dbUri)).exists) {
+        Alert.alert("Error", "No DB file found");
+        return;
+      }
+
+      await Sharing.shareAsync(dbUri, {
+        dialogTitle: `Export DB (${count} cards)`,
+        mimeType: "application/x-sqlite3",
+        UTI: "public.database",
+      });
+    } catch (e) {
+      console.error("Export failed", e);
+      Alert.alert("Error", "Export failed");
+    }
+  };
+
+  const handleResetStorage = async () => {
+    Alert.alert(
+      "Reset Storage DB?",
+      "This wipes all downloaded decks and cards. You will need to unlock them again.",
       [
         { text: "Cancel", style: "cancel" },
         {
           text: "Reset",
           style: "destructive",
           onPress: async () => {
-            await JsonDatabase.resetDatabase();
-            Alert.alert("Success", "Database reset. Restarting...");
-            // Reload data to reflect changes
-            loadData();
-            setIsSettingsOpen(false);
+            await storageService.resetDatabase();
+            Alert.alert("Success", "Storage database has been reset.");
           },
         },
       ]
@@ -244,66 +319,158 @@ export default function HomeScreen() {
         </View>
       </ScrollView>
 
-      {/* --- SETTINGS MODAL --- */}
+      {/* --- SETTINGS MODAL (Refreshed) --- */}
       <Modal
-        animationType="fade"
+        animationType="slide"
         transparent={true}
         visible={isSettingsOpen}
         onRequestClose={() => setIsSettingsOpen(false)}
-        statusBarTranslucent={true}
       >
         <TouchableWithoutFeedback onPress={() => setIsSettingsOpen(false)}>
-          <View className="flex-1 bg-black/60 justify-center items-center px-5">
+          <View className="flex-1 bg-black/80 justify-end">
             <TouchableWithoutFeedback>
-              <View className="bg-surface w-full max-w-sm p-6 rounded-2xl border border-white/10 shadow-xl">
-                {/* Modal Header */}
-                <View className="flex-row justify-between items-center mb-6">
-                  <Text className="text-foreground font-heading text-2xl">
+              <View
+                className="bg-[#1E1E1E] w-full rounded-t-3xl border-t border-white/10 overflow-hidden"
+                style={{ paddingBottom: insets.bottom + 20 }}
+              >
+                {/* Drag Handle */}
+                <View className="w-full items-center pt-4 pb-2">
+                  <View className="w-12 h-1 bg-white/20 rounded-full" />
+                </View>
+
+                {/* Header */}
+                <View className="flex-row justify-between items-center px-6 mb-8">
+                  <Text className="text-white font-heading text-2xl">
                     Settings
                   </Text>
-                  <TouchableOpacity onPress={() => setIsSettingsOpen(false)}>
-                    <X color={activeColors.text} size={24} />
+                  <TouchableOpacity
+                    onPress={() => setIsSettingsOpen(false)}
+                    className="bg-white/10 p-2 rounded-full"
+                  >
+                    <X color="white" size={20} />
                   </TouchableOpacity>
                 </View>
 
-                {/* Normal Settings */}
-                <View className="mb-6">
-                  <Text className="text-foreground/50 text-sm">
-                    App Version: 1.0.0 (Alpha)
-                  </Text>
+                {/* General Info */}
+                <View className="px-6 mb-8">
+                  <View className="flex-row justify-between items-center bg-black/20 p-4 rounded-xl border border-white/5">
+                    <Text className="text-white font-medium">Version</Text>
+                    <Text className="text-white/50">1.0.0 (Alpha)</Text>
+                  </View>
                 </View>
 
-                {/* DEBUG SECTION */}
+                {/* DEBUG ZONE */}
                 {DEBUG_MODE && (
-                  <View className="border-t border-white/10 pt-4 mt-2">
-                    <Text className="text-red-400 font-bold mb-3 text-xs uppercase tracking-widest">
-                      Debug Zone
+                  <View className="px-6">
+                    <Text className="text-white/30 font-bold mb-4 text-xs uppercase tracking-widest pl-1">
+                      Developer Tools
                     </Text>
 
-                    {/* INSPECT BUTTON */}
-                    <TouchableOpacity
-                      onPress={handleInspectLibrary}
-                      className="bg-red-500/10 border border-red-500/50 p-4 rounded-xl flex-row items-center justify-center mb-3"
-                    >
-                      <Text className="text-red-400 font-bold">
-                        Show library.json
-                      </Text>
-                    </TouchableOpacity>
+                    <View className="gap-3">
+                      {/* 1. RESET DB */}
+                      <TouchableOpacity
+                        onPress={handleResetLibrary}
+                        className="bg-surface border border-white/10 p-4 rounded-xl flex-row items-center justify-between active:bg-red-500/10 active:border-red-500/50"
+                      >
+                        <View className="flex-row items-center gap-4">
+                          <View className="w-10 h-10 rounded-full bg-red-500/20 items-center justify-center">
+                            <Trash color="#EF4444" size={20} weight="fill" />
+                          </View>
+                          <View>
+                            <Text className="text-white font-bold text-base">
+                              Reset Progress
+                            </Text>
+                            <Text className="text-white/40 text-xs">
+                              Wipes learning data (FSRS)
+                            </Text>
+                          </View>
+                        </View>
+                        <Ionicons
+                          name="chevron-forward"
+                          size={20}
+                          color="#555"
+                        />
+                      </TouchableOpacity>
 
-                    {/* RESET BUTTON */}
-                    <TouchableOpacity
-                      onPress={handleResetLibrary}
-                      className="bg-red-500/20 border-2 border-red-500 p-4 rounded-xl flex-row items-center justify-center gap-2"
-                    >
-                      <Trash color="#EF4444" size={20} weight="bold" />
-                      <Text className="text-red-400 font-bold">
-                        Reset Database
-                      </Text>
-                    </TouchableOpacity>
+                      {/* 2. LOCK DECKS (New) */}
+                      <TouchableOpacity
+                        onPress={handleLockAllDecks}
+                        className="bg-surface border border-white/10 p-4 rounded-xl flex-row items-center justify-between active:bg-orange-500/10 active:border-orange-500/50"
+                      >
+                        <View className="flex-row items-center gap-4">
+                          <View className="w-10 h-10 rounded-full bg-orange-500/20 items-center justify-center">
+                            <LockKey color="#F97316" size={20} weight="fill" />
+                          </View>
+                          <View>
+                            <Text className="text-white font-bold text-base">
+                              Lock All Decks
+                            </Text>
+                            <Text className="text-white/40 text-xs">
+                              Forces re-verification
+                            </Text>
+                          </View>
+                        </View>
+                        <Ionicons
+                          name="chevron-forward"
+                          size={20}
+                          color="#555"
+                        />
+                      </TouchableOpacity>
 
-                    <Text className="text-foreground/30 text-xs mt-2 text-center">
-                      WARNING: Resets all learning progress
-                    </Text>
+                      {/* 3. EXPORT DB (New) */}
+                      <TouchableOpacity
+                        onPress={handleExportDB}
+                        className="bg-surface border border-white/10 p-4 rounded-xl flex-row items-center justify-between active:bg-blue-500/10 active:border-blue-500/50"
+                      >
+                        <View className="flex-row items-center gap-4">
+                          <View className="w-10 h-10 rounded-full bg-blue-500/20 items-center justify-center">
+                            <Ionicons
+                              name="share-outline"
+                              size={20}
+                              color="#3B82F6"
+                            />
+                          </View>
+                          <View>
+                            <Text className="text-white font-bold text-base">
+                              Export DB
+                            </Text>
+                            <Text className="text-white/40 text-xs">
+                              Analyze in DB Browser
+                            </Text>
+                          </View>
+                        </View>
+                        <Ionicons
+                          name="chevron-forward"
+                          size={20}
+                          color="#555"
+                        />
+                      </TouchableOpacity>
+
+                      {/* 4. RESET STORAGE DB (New) */}
+                      <TouchableOpacity
+                        onPress={handleResetStorage}
+                        className="bg-surface border border-white/10 p-4 rounded-xl flex-row items-center justify-between active:bg-purple-500/10 active:border-purple-500/50"
+                      >
+                        <View className="flex-row items-center gap-4">
+                          <View className="w-10 h-10 rounded-full bg-purple-500/20 items-center justify-center">
+                            <Database color="#A855F7" size={20} weight="fill" />
+                          </View>
+                          <View>
+                            <Text className="text-white font-bold text-base">
+                              Reset Storage DB
+                            </Text>
+                            <Text className="text-white/40 text-xs">
+                              Fixes schema/column issues
+                            </Text>
+                          </View>
+                        </View>
+                        <Ionicons
+                          name="chevron-forward"
+                          size={20}
+                          color="#555"
+                        />
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 )}
               </View>
