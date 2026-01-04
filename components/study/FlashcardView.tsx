@@ -3,6 +3,7 @@ import { DictionaryModal } from "@/components/modals/DictionaryModal";
 import { InteractiveText } from "@/components/study/InteractiveText";
 import { Colors, f, SizesRaw } from "@/constants/theme";
 import { Flashcard } from "@/constants/types";
+import { dictionaryService } from "@/services/DictionaryService";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient"; // <--- Import Gradient
 import { Check, Star, X as XIcon } from "phosphor-react-native";
@@ -31,17 +32,49 @@ export function FlashcardView({ queue, onRate, onBack }: Props) {
   const [isRevealed, setIsRevealed] = useState(false);
   const [dictModalVisible, setDictModalVisible] = useState(false);
   const [selectedWord, setSelectedWord] = useState("");
+  const [selectedMeta, setSelectedMeta] = useState({});
 
-  const handleWordPress = (word: string) => {
+  const handleWordPress = (word: string, meta: object) => {
+    // console.log("WORD IS ", word);
     setSelectedWord(word);
+    setSelectedMeta(meta);
     setDictModalVisible(true);
   };
 
   // Animation Value for Border Color
   const revealProgress = useSharedValue(0);
-
+  const [definition, setDefinition] = useState<any>(null); // State for word definition
   const activeCard = queue[0];
   const contextPhrase = activeCard?.context_card;
+
+  // Reset definition when card changes
+  useEffect(() => {
+    setDefinition(null);
+    setIsRevealed(false);
+  }, [activeCard]);
+
+  // Fetch Definition on Reveal (for Words)
+  useEffect(() => {
+    const loadDef = async () => {
+      if (
+        isRevealed &&
+        activeCard.type === "word" &&
+        activeCard.dictionary_entry_id
+      ) {
+        const data = await dictionaryService.getEntryById(
+          activeCard.dictionary_entry_id
+        );
+        setDefinition(data);
+      }
+    };
+    loadDef();
+  }, [isRevealed, activeCard]);
+
+  // Helper to format definition text safely
+  const renderGloss = (gloss: string | string[]) => {
+    if (Array.isArray(gloss)) return gloss.join("; ");
+    return gloss;
+  };
 
   // Trigger animation when reveal state changes
   useEffect(() => {
@@ -65,30 +98,58 @@ export function FlashcardView({ queue, onRate, onBack }: Props) {
 
   const renderHighlightedContext = () => {
     if (!contextPhrase) return null;
-    const fullText = contextPhrase.front;
+
+    // get phrase tokens in order
+    // TODO convert token_map to array to drastically simplify this process
+    // (requires backend modification)
+    const tokensWithInfo = JSON.parse(contextPhrase.raw_data).tokens;
+    const tokenMetaPairs = tokensWithInfo.map((item) => ({
+      token: item.token,
+      meta:
+        item.model_to_result && Object.keys(item.model_to_result).length > 0
+          ? item.model_to_result
+          : null,
+    }));
+    console.log(JSON.stringify(tokenMetaPairs, null, 2));
     const target = activeCard.front;
-    const parts = fullText.split(new RegExp(`(${target})`, "g"));
+
+    const notActiveClassString = "font-japanese text-foreground";
+    const activeClassString = "font-japanese-semibold text-foreground";
+    const textStyle = { fontSize: f(24) };
 
     return (
-      <Text
-        className="text-center text-foreground font-heading"
-        style={{ fontSize: f(20), lineHeight: f(32) }}
-      >
-        {parts.map((part, index) => {
-          const isTarget = part === target;
-          return (
-            <Text
-              key={index}
-              className={
-                isTarget ? "text-white font-bold" : "text-white/60 font-light"
-              }
-              style={isTarget ? { color: Colors.dark.tertiary } : {}}
-            >
-              {part}
-            </Text>
-          );
-        })}
-      </Text>
+      <View className="flex-row">
+        {/* The outer Text component acts as the paragraph container.
+            Nested Text components flow inline like <span> tags on the web.
+         */}
+        <Text className="flex-wrap text-center" style={{ width: "100%" }}>
+          {tokenMetaPairs.map((part: any, index: number) => {
+            const isTarget = part.token === target;
+            const hasMeta = !!part.meta;
+
+            return (
+              <Text
+                key={index}
+                // ✅ KEY FIX: Use onPress directly on Text, not TouchableOpacity
+                onPress={
+                  hasMeta
+                    ? () => handleWordPress(part.token, part.meta)
+                    : undefined
+                }
+                // Optional: Shows a native grey highlight on press (iOS/Android)
+                suppressHighlighting={false}
+                className={isTarget ? activeClassString : notActiveClassString}
+                style={{
+                  color: isTarget ? Colors.dark.primary : Colors.dark.text,
+                  ...textStyle,
+                }}
+              >
+                {part.token}
+              </Text>
+            );
+          })}
+        </Text>
+      </View>
     );
   };
 
@@ -250,24 +311,63 @@ export function FlashcardView({ queue, onRate, onBack }: Props) {
               {isRevealed && (
                 <Animated.View
                   entering={FadeInDown.duration(400)}
-                  className="w-full items-center gap-sm_12"
+                  className="w-full items-center"
                 >
-                  <Text
-                    className="text-foreground text-center font-semibold shadow-md font-sans"
-                    style={{
-                      fontSize: f(20),
-                    }}
-                  >
-                    {activeCard.back}
-                  </Text>
+                  <View className="h-[1px] bg-white/30 w-full my-6" />
 
-                  {contextPhrase && (
-                    <Text
-                      className="text-foreground text-center font-sans font-light"
-                      style={{ fontSize: f(14) }}
-                    >
-                      {contextPhrase.back}
-                    </Text>
+                  {/* --- CASE A: WORD CARD (Show Dictionary Def) --- */}
+                  {activeCard.type === "word" ? (
+                    <View className="w-full">
+                      {definition ? (
+                        <View>
+                          {/* Show first 3 senses max to keep it clean */}
+                          {(Array.isArray(definition.sense)
+                            ? definition.sense
+                            : [definition.sense]
+                          )
+                            .slice(0, 3)
+                            .map((s: any, i: number) => (
+                              <View key={i} className="mb-4">
+                                <Text className="text-white/50 text-xs uppercase mb-1">
+                                  {Array.isArray(s.pos) ? s.pos[0] : s.pos}
+                                </Text>
+                                <Text className="text-white text-xl font-medium leading-7">
+                                  {i + 1}. {renderGloss(s.gloss)}
+                                </Text>
+                              </View>
+                            ))}
+                        </View>
+                      ) : (
+                        <Text className="text-white text-center italic opacity-50">
+                          Loading definition...
+                        </Text>
+                      )}
+
+                      {/* Show Context Sentence below definition */}
+                      {contextPhrase && (
+                        <View className="mt-6 pt-6 border-t border-white/10">
+                          <Text className="text-white/40 text-xs text-center mb-2">
+                            CONTEXT
+                          </Text>
+                          <Text className="text-white/80 text-center text-lg font-heading">
+                            {contextPhrase.front}
+                          </Text>
+                          <Text className="text-white/50 text-center italic mt-1">
+                            {contextPhrase.back}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  ) : (
+                    // --- CASE B: PHRASE CARD (Show Translation) ---
+                    <View>
+                      <Text
+                        className="text-white text-center font-medium leading-8 shadow-black shadow-md"
+                        style={{ fontSize: f(24) }}
+                      >
+                        {activeCard.back}
+                      </Text>
+                    </View>
                   )}
                 </Animated.View>
               )}
@@ -301,6 +401,7 @@ export function FlashcardView({ queue, onRate, onBack }: Props) {
       <DictionaryModal
         visible={dictModalVisible}
         word={selectedWord}
+        meta={selectedMeta}
         onClose={() => setDictModalVisible(false)}
       />
     </View>

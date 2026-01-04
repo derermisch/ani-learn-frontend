@@ -44,7 +44,8 @@ class DictionaryService {
     console.log("[Dictionary] Service Ready.");
   }
 
-  async lookup(word: string): Promise<any[]> {
+  // Updated return type signature
+  async lookup(word: string): Promise<{ id: string; data: any }[]> {
     if (!this.db) await this.init();
 
     // 1. Get Entry IDs
@@ -59,14 +60,33 @@ class DictionaryService {
     const placeholders = mappings.map(() => "?").join(",");
     const ids = mappings.map((m) => m.entry_id);
 
-    // 3. Fetch entries
-    const entries = await this.db!.getAllAsync<{ data: string }>(
-      `SELECT data FROM entries WHERE id IN (${placeholders})`,
+    // 3. Fetch entries (Now selecting 'id' AND 'data')
+    const entries = await this.db!.getAllAsync<{ id: string; data: string }>(
+      `SELECT id, data FROM entries WHERE id IN (${placeholders})`,
       ids
     );
 
-    // 4. Parse JSON strings back to objects
-    return entries.map((e) => JSON.parse(e.data));
+    // 4. Map to { id, data } structure
+    return entries.map((e) => ({
+      id: e.id,
+      data: JSON.parse(e.data),
+    }));
+  }
+
+  /**
+   * Fetch a specific entry by its unique ID (e.g. "entry12345")
+   * Used for displaying the back of Word cards.
+   */
+  async getEntryById(entryId: string): Promise<any | null> {
+    if (!this.db) await this.init();
+
+    const result = await this.db!.getFirstAsync<{ data: string }>(
+      "SELECT data FROM entries WHERE id = ?",
+      [entryId]
+    );
+
+    if (!result) return null;
+    return JSON.parse(result.data);
   }
 }
 

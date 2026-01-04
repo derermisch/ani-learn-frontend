@@ -3,43 +3,59 @@ import {
   StudyOptionsState,
   StudySettings,
 } from "@/components/study/StudySettings";
-import { Flashcard } from "@/constants/types";
 import { fsrsService } from "@/services/FSRSService";
-import { JsonDatabase } from "@/services/jsonDatabase";
+import { LocalCard, storageService } from "@/services/StorageService"; // <--- NEW SOURCE
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, View } from "react-native";
-import { State } from "ts-fsrs";
+import { Card as FSRSCard, State } from "ts-fsrs";
 
-// We define an "Enriched" card type locally to include the context object
-export interface EnrichedFlashcard extends Flashcard {
-  context_card?: Flashcard;
+// Map LocalCard to the shape your View expects
+// We essentially treat LocalCard AS the Flashcard, but ensure dates are Date objects
+export interface EnrichedFlashcard extends Omit<
+  LocalCard,
+  "due" | "last_review"
+> {
+  due: Date;
+  last_review?: Date;
+  context_card?: EnrichedFlashcard;
 }
 
 export default function StudyScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
 
-  // --- STATE ---
   const [loading, setLoading] = useState(true);
-  const [allDeckCards, setAllDeckCards] = useState<Flashcard[]>([]);
-
-  // Session State
+  const [allDeckCards, setAllDeckCards] = useState<EnrichedFlashcard[]>([]);
   const [sessionQueue, setSessionQueue] = useState<EnrichedFlashcard[]>([]);
   const [isSetup, setIsSetup] = useState(false);
 
-  // --- LOAD DATA ---
+  // --- LOAD DATA FROM SQLITE ---
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
       try {
-        const allCards = await JsonDatabase.getCards();
-        const deckCards = allCards.filter((c) => c.deck_id === id);
-        // console.log("deckCards: ", JSON.stringify(deckCards, undefined, 4));
+        const rawCards = await storageService.getCards(id as string);
 
-        setAllDeckCards(deckCards);
+        // Convert SQL strings (ISO dates) back to JS Date objects
+        const hydratedCards: EnrichedFlashcard[] = rawCards.map((c) => ({
+          ...c,
+          due: new Date(c.due),
+          last_review: c.last_review ? new Date(c.last_review) : undefined,
+          // These numeric fields come straight from SQL
+          state: c.state,
+          stability: c.stability,
+          difficulty: c.difficulty,
+          elapsed_days: c.elapsed_days,
+          scheduled_days: c.scheduled_days,
+          reps: c.reps,
+          lapses: c.lapses,
+        }));
+
+        setAllDeckCards(hydratedCards);
       } catch (e) {
-        Alert.alert("Error", "Failed to load cards.");
+        console.error(e);
+        Alert.alert("Error", "Failed to load cards from storage.");
       } finally {
         setLoading(false);
       }
@@ -47,16 +63,17 @@ export default function StudyScreen() {
     loadData();
   }, [id]);
 
-  // --- ACTIONS ---
+  // --- START SESSION ---
   const startSession = (settings: StudyOptionsState) => {
     const now = new Date();
-    const mode = settings.cardType as string;
+    const mode = settings.cardType as string; // 'word' or 'phrase'
     const order = settings.order as string;
 
     // 1. Filter by Mode
     let cards = allDeckCards.filter((c) => c.type === mode);
 
     // 2. Filter by FSRS (New or Due)
+    // Note: 'state === State.New' (0) OR 'due <= now'
     cards = cards.filter((c) => c.state === State.New || c.due <= now);
 
     // 3. Sort
@@ -71,28 +88,15 @@ export default function StudyScreen() {
       return;
     }
 
-    // 4. ENRICH DATA (The "Merge" Step)
-    // We look up the context phrase *now* so the View doesn't have to search later.
-    const enrichedCards: EnrichedFlashcard[] = cards.map((card) => {
-      let contextCard: Flashcard | undefined;
+    // 4. ENRICH DATA (Link Context)
+    // This connects Words to their parent Phrases for the "Context" view
+    const enrichedCards = cards.map((card) => {
+      let contextCard: EnrichedFlashcard | undefined;
 
-      // Only words need context phrases
-      if (card.type === "word" && card.related_ids?.length) {
-        // Find the first related ID that is actually a PHRASE
-        for (const relatedId of card.related_ids) {
-          // console.log(relatedId);
-          const found = allDeckCards.find(
-            (c) => c.id === relatedId && c.type === "phrase"
-          );
-          if (found) {
-            contextCard = found;
-            break; // Stop after finding the first valid phrase
-          }
-        }
+      if (card.type === "word" && card.context_phrase_id) {
+        contextCard = allDeckCards.find((c) => c.id === card.context_phrase_id);
       }
 
-      // console.log("card: ", JSON.stringify(card, undefined, 4));
-      // console.log("contextCard: ", JSON.stringify(contextCard, undefined, 4));
       return { ...card, context_card: contextCard };
     });
 
@@ -100,27 +104,50 @@ export default function StudyScreen() {
     setIsSetup(true);
   };
 
-  const handleRateCard = async (card: Flashcard, isPass: boolean) => {
-    // 1. Calculate new state
-    const { card: updatedCard } = fsrsService.processReview(card, isPass);
+  const handleRateCard = async (card: EnrichedFlashcard, isPass: boolean) => {
+    // 1. Convert EnrichedCard back to FSRS-compatible object
+    // We explicitly cast to avoid TS issues, as our shape matches what FSRS expects
+    const inputCard = {
+      ...card,
+      due: card.due,
+      last_review: card.last_review,
+    } as unknown as FSRSCard;
 
-    // 2. Persist
-    await JsonDatabase.updateCard(updatedCard);
-
-    // 3. Update local cache (so refreshing doesn't show old state)
-    setAllDeckCards((prev) =>
-      prev.map((c) => (c.id === updatedCard.id ? updatedCard : c))
+    // 2. Calculate new state
+    const { card: updatedFSRSCard } = fsrsService.processReview(
+      inputCard,
+      isPass
     );
 
-    // 4. Update Queue
-    // We must preserve the 'context_card' field when updating the queue
-    const updatedEnrichedCard: EnrichedFlashcard = {
-      ...updatedCard,
-      context_card: (card as EnrichedFlashcard).context_card,
+    // 3. Merge Updates back into our LocalCard shape
+    // We serialize the dates back to ISO strings for SQLite
+    const cardToSave: LocalCard = {
+      ...card, // Keep static fields (front, back, raw_data, etc)
+      ...updatedFSRSCard, // Overwrite stats
+      due: updatedFSRSCard.due.toISOString(),
+      last_review: updatedFSRSCard.last_review?.toISOString(),
+      token_map: card.token_map, // Ensure these persist
+      raw_data: card.raw_data,
     };
 
+    // 4. Persist to SQLite
+    await storageService.updateCardStats(cardToSave);
+
+    // 5. Update local cache state (for UI consistency if we restart session without reload)
+    // We keep dates as Objects in memory
+    const updatedInMemoryCard: EnrichedFlashcard = {
+      ...card,
+      ...updatedFSRSCard,
+      context_card: card.context_card,
+    };
+
+    setAllDeckCards((prev) =>
+      prev.map((c) => (c.id === card.id ? updatedInMemoryCard : c))
+    );
+
+    // 6. Update Queue
     if (!isPass) {
-      setSessionQueue((prev) => [...prev.slice(1), updatedEnrichedCard]);
+      setSessionQueue((prev) => [...prev.slice(1), updatedInMemoryCard]);
     } else {
       setSessionQueue((prev) => prev.slice(1));
     }
@@ -134,7 +161,6 @@ export default function StudyScreen() {
     );
   }
 
-  // --- RENDER ---
   if (!isSetup) {
     return (
       <StudySettings onStart={startSession} onBack={() => router.back()} />
@@ -144,7 +170,6 @@ export default function StudyScreen() {
   return (
     <FlashcardView
       queue={sessionQueue}
-      // REMOVED: allCards={allDeckCards} <-- No longer needed!
       onRate={handleRateCard}
       onBack={() => router.back()}
     />

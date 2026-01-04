@@ -1,11 +1,12 @@
-import { IconSymbol } from "@/components/ui/icon-symbol";
-import { Deck } from "@/constants/types";
-import { getUserLibrary } from "@/services/api";
-import { useFocusEffect } from "@react-navigation/native";
-import { useRouter } from "expo-router";
+import { Colors } from "@/constants/theme";
+import { OwnedDeck, storageService } from "@/services/StorageService";
+import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect, useRouter } from "expo-router";
+import { Funnel, Gear } from "phosphor-react-native";
 import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
+  Dimensions,
   FlatList,
   RefreshControl,
   StyleSheet,
@@ -13,19 +14,20 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { DeckCard } from "../../components/DeckCard";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-type Tab = "decks" | "words";
+// Get screen width to calculate card size dynamically
+const { width } = Dimensions.get("window");
+const COLUMN_GAP = 12;
+const CARD_WIDTH = (width - 40 - COLUMN_GAP) / 2;
 
 export default function LibraryScreen() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<Tab>("decks");
-
-  const [decks, setDecks] = useState<Deck[]>([]);
-  const [words, setWords] = useState<string[]>([]);
+  const insets = useSafeAreaInsets();
+  const [decks, setDecks] = useState<OwnedDeck[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Refresh data whenever screen comes into focus (in case user just unlocked something)
+  // Reload data every time we enter the screen
   useFocusEffect(
     useCallback(() => {
       loadData();
@@ -33,201 +35,245 @@ export default function LibraryScreen() {
   );
 
   const loadData = async () => {
-    setLoading(true);
-    const data = await getUserLibrary();
-    setDecks(data.decks);
-    setWords(data.words);
-    setLoading(false);
+    try {
+      // Fetch directly from our local SQLite DB
+      const localDecks = await storageService.getOwnedDecks();
+      setDecks(localDecks);
+    } catch (e) {
+      console.error("Failed to load library:", e);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const renderDeck = ({ item }: { item: Deck }) => (
-    <DeckCard deck={item} onPress={() => router.push(`/deck/${item.id}`)} />
-  );
-
-  const renderWord = ({ item }: { item: string }) => (
-    <View style={styles.wordBadge}>
-      <Text style={styles.wordText}>{item}</Text>
-    </View>
+  const renderDeckItem = ({ item }: { item: OwnedDeck }) => (
+    <GridDeckCard
+      deck={item}
+      // ✅ CHANGED: Now navigates to the Dashboard instead of the generic ID page
+      onPress={() => router.push(`/deck/${item.id}/dashboard`)}
+    />
   );
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      {/* HEADER */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <IconSymbol name="arrow.left" size={24} color="#FFF" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>My Library</Text>
-        <View style={{ width: 40 }} />
-      </View>
-
-      {/* Tabs */}
-      <View style={styles.tabContainer}>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === "decks" && styles.activeTab]}
-          onPress={() => setActiveTab("decks")}
-        >
-          <Text
-            style={[
-              styles.tabText,
-              activeTab === "decks" && styles.activeTabText,
-            ]}
-          >
-            Decks ({decks.length})
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === "words" && styles.activeTab]}
-          onPress={() => setActiveTab("words")}
-        >
-          <Text
-            style={[
-              styles.tabText,
-              activeTab === "words" && styles.activeTabText,
-            ]}
-          >
-            Words ({words.length})
-          </Text>
+        <Text style={styles.headerTitle}>YOUR LIBRARY</Text>
+        <TouchableOpacity>
+          <Gear size={26} color="#FFF" weight="fill" />
         </TouchableOpacity>
       </View>
 
-      {/* Content */}
+      {/* SUB-HEADER & FILTER */}
+      <View style={styles.subHeader}>
+        <Text style={styles.sectionTitle}>Decks you study</Text>
+        <TouchableOpacity>
+          <Funnel size={20} color="#888" />
+        </TouchableOpacity>
+      </View>
+
+      {/* GRID CONTENT */}
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#A071FF" />
+          <ActivityIndicator size="large" color={Colors.dark.tertiary} />
         </View>
       ) : (
-        <View style={styles.content}>
-          {activeTab === "decks" ? (
-            <FlatList
-              data={decks}
-              renderItem={renderDeck}
-              keyExtractor={(item) => item.id}
-              contentContainerStyle={{ paddingBottom: 20 }}
-              refreshControl={
-                <RefreshControl
-                  refreshing={loading}
-                  onRefresh={loadData}
-                  tintColor="#A071FF"
-                />
-              }
-              ListEmptyComponent={
-                <View style={styles.emptyState}>
-                  <IconSymbol name="doc.text" size={48} color="#444" />
-                  <Text style={styles.emptyText}>
-                    You haven't unlocked any decks yet.
-                  </Text>
-                </View>
-              }
+        <FlatList
+          data={decks}
+          renderItem={renderDeckItem}
+          keyExtractor={(item) => item.id}
+          numColumns={2}
+          contentContainerStyle={styles.listContent}
+          columnWrapperStyle={{ gap: COLUMN_GAP }}
+          refreshControl={
+            <RefreshControl
+              refreshing={loading}
+              onRefresh={loadData}
+              tintColor={Colors.dark.tertiary}
             />
-          ) : (
-            <FlatList
-              data={words}
-              renderItem={renderWord}
-              keyExtractor={(item, index) => index.toString()}
-              numColumns={3} // Grid layout for words
-              contentContainerStyle={{ paddingBottom: 20 }}
-              columnWrapperStyle={{ gap: 10 }}
-              refreshControl={
-                <RefreshControl
-                  refreshing={loading}
-                  onRefresh={loadData}
-                  tintColor="#A071FF"
-                />
-              }
-              ListEmptyComponent={
-                <View style={styles.emptyState}>
-                  <IconSymbol
-                    name="character.book.closed.fill"
-                    size={48}
-                    color="#444"
-                  />
-                  <Text style={styles.emptyText}>
-                    No known words yet. Start studying!
-                  </Text>
-                </View>
-              }
-            />
-          )}
-        </View>
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <Ionicons name="library-outline" size={64} color="#333" />
+              <Text style={styles.emptyText}>Your library is empty.</Text>
+              <Text style={styles.emptySubText}>
+                Unlock decks from the home screen to see them here.
+              </Text>
+            </View>
+          }
+        />
       )}
     </View>
   );
 }
 
+// --- VERTICAL GRID CARD (Matches your screenshot) ---
+const GridDeckCard = ({
+  deck,
+  onPress,
+}: {
+  deck: OwnedDeck;
+  onPress: () => void;
+}) => {
+  const getPlaceholderColor = (str: string) => {
+    const colors = ["#F59E0B", "#EF4444", "#3B82F6", "#10B981", "#8B5CF6"];
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return colors[Math.abs(hash) % colors.length];
+  };
+
+  const bg = getPlaceholderColor(deck.title || "?");
+  const placeholderChar = (deck.title || "U").substring(0, 2).toUpperCase();
+
+  return (
+    <TouchableOpacity
+      style={[styles.card, { backgroundColor: bg }]}
+      onPress={onPress}
+      activeOpacity={0.9}
+    >
+      {/* Placeholder Image Area */}
+      <View style={styles.cardImageArea}>
+        <Text style={styles.cardPlaceholderText}>{placeholderChar}</Text>
+      </View>
+
+      {/* Glassmorphism Footer */}
+      <View style={styles.cardFooter}>
+        <View style={styles.cardHeaderRow}>
+          <Text style={styles.cardTitle} numberOfLines={1}>
+            {deck.title || "Untitled Deck"}
+          </Text>
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>epis. 1</Text>
+          </View>
+        </View>
+
+        {/* Progress Bar */}
+        <View style={styles.progressContainer}>
+          <View style={[styles.progressBar, { width: "40%" }]} />
+        </View>
+        <Text style={styles.progressText}>progress: 40%</Text>
+      </View>
+    </TouchableOpacity>
+  );
+};
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#151718" },
+  container: { flex: 1, backgroundColor: "#121212" },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
+
   header: {
     flexDirection: "row",
-    alignItems: "center",
     justifyContent: "space-between",
-    paddingTop: 60,
+    alignItems: "center",
     paddingHorizontal: 20,
-    marginBottom: 20,
+    paddingVertical: 10,
   },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#333",
+  headerTitle: {
+    fontFamily: "YeonSung",
+    fontSize: 32,
+    color: "#E0E0E0",
+  },
+
+  subHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    marginTop: 10,
+    marginBottom: 15,
+  },
+  sectionTitle: {
+    color: "#FFF",
+    fontSize: 18,
+    fontFamily: "Quicksand-Regular",
+  },
+
+  listContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+  },
+
+  card: {
+    width: CARD_WIDTH,
+    height: CARD_WIDTH * 1.5,
+    borderRadius: 16,
+    overflow: "hidden",
+    marginBottom: 12,
+    elevation: 4,
+  },
+  cardImageArea: {
+    flex: 1,
     justifyContent: "center",
     alignItems: "center",
   },
-  headerTitle: { color: "#FFF", fontSize: 20, fontWeight: "bold" },
-
-  // Tabs
-  tabContainer: {
+  cardPlaceholderText: {
+    fontSize: 60,
+    fontWeight: "900",
+    color: "rgba(255,255,255,0.3)",
+  },
+  cardFooter: {
+    height: 70,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    padding: 10,
+    justifyContent: "center",
+  },
+  cardHeaderRow: {
     flexDirection: "row",
-    backgroundColor: "#1E1E1E",
-    marginHorizontal: 20,
-    borderRadius: 12,
-    padding: 4,
-    marginBottom: 20,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 10,
+    justifyContent: "space-between",
     alignItems: "center",
-    borderRadius: 8,
+    marginBottom: 6,
   },
-  activeTab: {
+  cardTitle: {
+    color: "#FFF",
+    fontWeight: "bold",
+    fontSize: 14,
+    flex: 1,
+    marginRight: 4,
+  },
+  badge: {
     backgroundColor: "#333",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
   },
-  tabText: {
-    color: "#888",
-    fontWeight: "600",
+  badgeText: {
+    color: "#AAA",
+    fontSize: 8,
+    fontWeight: "bold",
   },
-  activeTabText: {
-    color: "#FFF",
+  progressContainer: {
+    height: 4,
+    backgroundColor: "rgba(255,255,255,0.3)",
+    borderRadius: 2,
+    marginBottom: 4,
+  },
+  progressBar: {
+    height: "100%",
+    backgroundColor: "#A071FF",
+    borderRadius: 2,
+  },
+  progressText: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 9,
+    textAlign: "center",
   },
 
-  content: { flex: 1, paddingHorizontal: 20 },
-
-  // Word Items
-  wordBadge: {
-    flex: 1,
-    backgroundColor: "#2C2C2C",
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    borderRadius: 8,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#444",
-  },
-  wordText: {
-    color: "#FFF",
-    fontSize: 16,
-  },
-
-  // Empty
   emptyState: {
     alignItems: "center",
     marginTop: 100,
-    gap: 15,
+    gap: 10,
   },
   emptyText: {
-    color: "#666",
-    fontSize: 16,
+    color: "#FFF",
+    fontSize: 18,
+    fontWeight: "bold",
+  },
+  emptySubText: {
+    color: "#888",
+    fontSize: 14,
+    textAlign: "center",
+    width: "70%",
   },
 });

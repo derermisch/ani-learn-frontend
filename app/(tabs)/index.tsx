@@ -34,7 +34,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // --- DEBUG CONFIG ---
-const DEBUG_MODE = true;
+const DEBUG_MODE = false;
 
 export default function HomeScreen() {
   const activeColors = Colors["dark"];
@@ -359,120 +359,104 @@ export default function HomeScreen() {
                   </View>
                 </View>
 
-                {/* DEBUG ZONE */}
-                {DEBUG_MODE && (
-                  <View className="px-6">
-                    <Text className="text-white/30 font-bold mb-4 text-xs uppercase tracking-widest pl-1">
-                      Developer Tools
-                    </Text>
+                {/* DEBUG ZONE {DEBUG_MODE && ( */}
 
-                    <View className="gap-3">
-                      {/* 1. RESET DB */}
-                      <TouchableOpacity
-                        onPress={handleResetLibrary}
-                        className="bg-surface border border-white/10 p-4 rounded-xl flex-row items-center justify-between active:bg-red-500/10 active:border-red-500/50"
-                      >
-                        <View className="flex-row items-center gap-4">
-                          <View className="w-10 h-10 rounded-full bg-red-500/20 items-center justify-center">
-                            <Trash color="#EF4444" size={20} weight="fill" />
-                          </View>
-                          <View>
-                            <Text className="text-white font-bold text-base">
-                              Reset Progress
-                            </Text>
-                            <Text className="text-white/40 text-xs">
-                              Wipes learning data (FSRS)
-                            </Text>
-                          </View>
-                        </View>
-                        <Ionicons
-                          name="chevron-forward"
-                          size={20}
-                          color="#555"
-                        />
-                      </TouchableOpacity>
+                <View className="px-6">
+                  <Text className="text-white/30 font-bold mb-4 text-xs uppercase tracking-widest pl-1">
+                    Developer Tools
+                  </Text>
 
-                      {/* 2. LOCK DECKS (New) */}
-                      <TouchableOpacity
-                        onPress={handleLockAllDecks}
-                        className="bg-surface border border-white/10 p-4 rounded-xl flex-row items-center justify-between active:bg-orange-500/10 active:border-orange-500/50"
-                      >
-                        <View className="flex-row items-center gap-4">
-                          <View className="w-10 h-10 rounded-full bg-orange-500/20 items-center justify-center">
-                            <LockKey color="#F97316" size={20} weight="fill" />
-                          </View>
-                          <View>
-                            <Text className="text-white font-bold text-base">
-                              Lock All Decks
-                            </Text>
-                            <Text className="text-white/40 text-xs">
-                              Forces re-verification
-                            </Text>
-                          </View>
+                  <View className="gap-3">
+                    {/* 1. RESET DB */}
+                    <TouchableOpacity
+                      onPress={handleResetLibrary}
+                      className="bg-surface border border-white/10 p-4 rounded-xl flex-row items-center justify-between active:bg-red-500/10 active:border-red-500/50"
+                    >
+                      <View className="flex-row items-center gap-4">
+                        <View className="w-10 h-10 rounded-full bg-red-500/20 items-center justify-center">
+                          <Trash color="#EF4444" size={20} weight="fill" />
                         </View>
-                        <Ionicons
-                          name="chevron-forward"
-                          size={20}
-                          color="#555"
-                        />
-                      </TouchableOpacity>
+                        <View>
+                          <Text className="text-white font-bold text-base">
+                            Reset Progress
+                          </Text>
+                          <Text className="text-white/40 text-xs">
+                            Wipes learning data (FSRS)
+                          </Text>
+                        </View>
+                      </View>
+                      <Ionicons name="chevron-forward" size={20} color="#555" />
+                    </TouchableOpacity>
 
-                      {/* 3. EXPORT DB (New) */}
-                      <TouchableOpacity
-                        onPress={handleExportDB}
-                        className="bg-surface border border-white/10 p-4 rounded-xl flex-row items-center justify-between active:bg-blue-500/10 active:border-blue-500/50"
-                      >
-                        <View className="flex-row items-center gap-4">
-                          <View className="w-10 h-10 rounded-full bg-blue-500/20 items-center justify-center">
-                            <Ionicons
-                              name="share-outline"
-                              size={20}
-                              color="#3B82F6"
-                            />
-                          </View>
-                          <View>
-                            <Text className="text-white font-bold text-base">
-                              Export DB
-                            </Text>
-                            <Text className="text-white/40 text-xs">
-                              Analyze in DB Browser
-                            </Text>
-                          </View>
+                    {/* 2. LOCK DECKS (New) */}
+                    <TouchableOpacity
+                      onPress={handleLockAllDecks}
+                      className="bg-surface border border-white/10 p-4 rounded-xl flex-row items-center justify-between active:bg-orange-500/10 active:border-orange-500/50"
+                    >
+                      <View className="flex-row items-center gap-4">
+                        <View className="w-10 h-10 rounded-full bg-orange-500/20 items-center justify-center">
+                          <LockKey color="#F97316" size={20} weight="fill" />
                         </View>
-                        <Ionicons
-                          name="chevron-forward"
-                          size={20}
-                          color="#555"
-                        />
-                      </TouchableOpacity>
+                        <View>
+                          <Text className="text-white font-bold text-base">
+                            Lock All Decks
+                          </Text>
+                          <Text className="text-white/40 text-xs">
+                            Forces re-verification
+                          </Text>
+                        </View>
+                      </View>
+                      <Ionicons name="chevron-forward" size={20} color="#555" />
+                    </TouchableOpacity>
 
-                      {/* 4. RESET STORAGE DB (New) */}
-                      <TouchableOpacity
-                        onPress={handleResetStorage}
-                        className="bg-surface border border-white/10 p-4 rounded-xl flex-row items-center justify-between active:bg-purple-500/10 active:border-purple-500/50"
-                      >
-                        <View className="flex-row items-center gap-4">
-                          <View className="w-10 h-10 rounded-full bg-purple-500/20 items-center justify-center">
-                            <Database color="#A855F7" size={20} weight="fill" />
-                          </View>
-                          <View>
-                            <Text className="text-white font-bold text-base">
-                              Reset Storage DB
-                            </Text>
-                            <Text className="text-white/40 text-xs">
-                              Fixes schema/column issues
-                            </Text>
-                          </View>
+                    {/* 3. EXPORT DB (New) */}
+                    <TouchableOpacity
+                      onPress={handleExportDB}
+                      className="bg-surface border border-white/10 p-4 rounded-xl flex-row items-center justify-between active:bg-blue-500/10 active:border-blue-500/50"
+                    >
+                      <View className="flex-row items-center gap-4">
+                        <View className="w-10 h-10 rounded-full bg-blue-500/20 items-center justify-center">
+                          <Ionicons
+                            name="share-outline"
+                            size={20}
+                            color="#3B82F6"
+                          />
                         </View>
-                        <Ionicons
-                          name="chevron-forward"
-                          size={20}
-                          color="#555"
-                        />
-                      </TouchableOpacity>
-                    </View>
+                        <View>
+                          <Text className="text-white font-bold text-base">
+                            Export DB
+                          </Text>
+                          <Text className="text-white/40 text-xs">
+                            Analyze in DB Browser
+                          </Text>
+                        </View>
+                      </View>
+                      <Ionicons name="chevron-forward" size={20} color="#555" />
+                    </TouchableOpacity>
+
+                    {/* 4. RESET STORAGE DB (New) */}
+                    <TouchableOpacity
+                      onPress={handleResetStorage}
+                      className="bg-surface border border-white/10 p-4 rounded-xl flex-row items-center justify-between active:bg-purple-500/10 active:border-purple-500/50"
+                    >
+                      <View className="flex-row items-center gap-4">
+                        <View className="w-10 h-10 rounded-full bg-purple-500/20 items-center justify-center">
+                          <Database color="#A855F7" size={20} weight="fill" />
+                        </View>
+                        <View>
+                          <Text className="text-white font-bold text-base">
+                            Reset Storage DB
+                          </Text>
+                          <Text className="text-white/40 text-xs">
+                            Fixes schema/column issues
+                          </Text>
+                        </View>
+                      </View>
+                      <Ionicons name="chevron-forward" size={20} color="#555" />
+                    </TouchableOpacity>
                   </View>
-                )}
+                </View>
+                {/* )} */}
               </View>
             </TouchableWithoutFeedback>
           </View>
