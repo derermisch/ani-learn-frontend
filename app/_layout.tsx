@@ -19,15 +19,22 @@ export default function RootLayout() {
 
   const [fontsLoaded, error] = useFonts({
     YeonSung: require("@/assets/fonts/Yeon_Sung/YeonSung-Regular.ttf"),
-    "KleeOne-Regular": require("@/assets/fonts/Klee_One/KleeOne-Regular.ttf"),
-    "KleeOne-SemiBold": require("@/assets/fonts/Klee_One/KleeOne-SemiBold.ttf"),
+    // "KleeOne-Regular": require("@/assets/fonts/Klee_One/KleeOne-Regular.ttf"),
+    // "KleeOne-SemiBold": require("@/assets/fonts/Klee_One/KleeOne-SemiBold.ttf"),
     "Quicksand-Light": require("@/assets/fonts/Quicksand/static/Quicksand-Light.ttf"),
     "Quicksand-Regular": require("@/assets/fonts/Quicksand/static/Quicksand-Regular.ttf"),
     "Quicksand-Medium": require("@/assets/fonts/Quicksand/static/Quicksand-Medium.ttf"),
     "Quicksand-SemiBold": require("@/assets/fonts/Quicksand/static/Quicksand-SemiBold.ttf"),
     "Quicksand-Bold": require("@/assets/fonts/Quicksand/static/Quicksand-Bold.ttf"),
-    // Also include your Japanese font if you added one (e.g. Yuji Syuku)
-    // "YujiSyuku-Regular": require("@/assets/fonts/Yuji_Syuku/YujiSyuku-Regular.ttf"),
+    "NotoSansJP-Thin": require("@/assets/fonts/Noto_Sans_JP/static/NotoSansJP-Thin.ttf"),
+    "NotoSansJP-ExtraLight": require("@/assets/fonts/Noto_Sans_JP/static/NotoSansJP-ExtraLight.ttf"),
+    "NotoSansJP-Light": require("@/assets/fonts/Noto_Sans_JP/static/NotoSansJP-Light.ttf"),
+    "NotoSansJP-Regular": require("@/assets/fonts/Noto_Sans_JP/static/NotoSansJP-Regular.ttf"),
+    "NotoSansJP-Medium": require("@/assets/fonts/Noto_Sans_JP/static/NotoSansJP-Medium.ttf"),
+    "NotoSansJP-SemiBold": require("@/assets/fonts/Noto_Sans_JP/static/NotoSansJP-SemiBold.ttf"),
+    "NotoSansJP-Bold": require("@/assets/fonts/Noto_Sans_JP/static/NotoSansJP-Bold.ttf"),
+    "NotoSansJP-ExtraBold": require("@/assets/fonts/Noto_Sans_JP/static/NotoSansJP-ExtraBold.ttf"),
+    "NotoSansJP-Black": require("@/assets/fonts/Noto_Sans_JP/static/NotoSansJP-Black.ttf"),
   });
 
   useEffect(() => {

@@ -33,6 +33,7 @@ export const Colors = {
     icon: "#687076",
     tabIconDefault: "#687076",
     tabIconSelected: tintColorLight,
+    muted: "#646667",
   },
   dark: {
     text: "#FCF7F8",
@@ -45,6 +46,7 @@ export const Colors = {
     icon: "#9BA1A6",
     tabIconDefault: "#9BA1A6",
     tabIconSelected: tintColorDark,
+    muted: "#646667",
   },
 };
 
@@ -54,7 +56,7 @@ export const Colors = {
 
 export const SizesScaled = {
   tabBarHeight: s(60),
-  iconMd: s(28),
+  iconMd: s(24),
   iconLg: s(32),
 
   spacing: {
@@ -62,6 +64,7 @@ export const SizesScaled = {
     xxxs_4: s(4),
     xxs_6: s(6),
     xxs_8: s(8),
+    xs_12: s(12),
     sm_16: s(16),
     sm_24: s(24),
     md_32: s(32),
@@ -86,6 +89,7 @@ export const SizesRaw = {
     xxxs_4: 4,
     xxs_6: 6,
     xxs_8: 8,
+    xs_12: 12,
     sm_16: 16,
     sm_24: 24,
     md_32: 32,

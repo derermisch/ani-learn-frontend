@@ -1,19 +1,15 @@
 import { EnrichedFlashcard } from "@/app/deck/[id]/study";
 import { DictionaryModal } from "@/components/modals/DictionaryModal";
-import { InteractiveText } from "@/components/study/InteractiveText";
-import { Colors, f, SizesRaw } from "@/constants/theme";
+import { ActionButtons } from "@/components/study/flashcardView/ActionButtons";
+import { CardContent } from "@/components/study/flashcardView/CardContent";
+import { TopBar } from "@/components/study/flashcardView/TopBar";
+import { Colors, SizesRaw } from "@/constants/theme";
 import { Flashcard } from "@/constants/types";
 import { dictionaryService } from "@/services/DictionaryService";
-import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient"; // <--- Import Gradient
-import { Check, Star, X as XIcon } from "phosphor-react-native";
 import React, { useEffect, useState } from "react";
-import { Image, Text, TouchableOpacity, View } from "react-native";
+import { Text, TouchableOpacity, View } from "react-native";
 import Animated, {
-  FadeIn,
-  FadeInDown,
   interpolateColor,
-  Layout,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
@@ -29,40 +25,35 @@ interface Props {
 export function FlashcardView({ queue, onRate, onBack }: Props) {
   const activeColors = Colors["dark"];
   const insets = useSafeAreaInsets();
+
+  // State
   const [isRevealed, setIsRevealed] = useState(false);
   const [dictModalVisible, setDictModalVisible] = useState(false);
   const [selectedWord, setSelectedWord] = useState("");
   const [selectedMeta, setSelectedMeta] = useState({});
+  const [definition, setDefinition] = useState<any>(null);
 
-  const handleWordPress = (word: string, meta: object) => {
-    // console.log("WORD IS ", word);
-    setSelectedWord(word);
-    setSelectedMeta(meta);
-    setDictModalVisible(true);
-  };
-
-  // Animation Value for Border Color
-  const revealProgress = useSharedValue(0);
-  const [definition, setDefinition] = useState<any>(null); // State for word definition
   const activeCard = queue[0];
-  const contextPhrase = activeCard?.context_card;
+  const revealProgress = useSharedValue(0);
 
-  // Reset definition when card changes
+  // --- EFFECTS ---
+
+  // 1. Reset state when card changes
   useEffect(() => {
     setDefinition(null);
-    setIsRevealed(false);
+    setIsRevealed(false); // Changed to false to start hidden
   }, [activeCard]);
 
-  // Fetch Definition on Reveal (for Words)
+  // 2. Fetch definition when revealed (if Word)
   useEffect(() => {
     const loadDef = async () => {
       if (
         isRevealed &&
-        activeCard.type === "word" &&
+        activeCard?.type === "word" &&
         activeCard.dictionary_entry_id
       ) {
         const data = await dictionaryService.getEntryById(
-          activeCard.dictionary_entry_id
+          activeCard.dictionary_entry_id,
         );
         setDefinition(data);
       }
@@ -70,20 +61,22 @@ export function FlashcardView({ queue, onRate, onBack }: Props) {
     loadDef();
   }, [isRevealed, activeCard]);
 
-  // Helper to format definition text safely
-  const renderGloss = (gloss: string | string[]) => {
-    if (Array.isArray(gloss)) return gloss.join("; ");
-    return gloss;
-  };
-
-  // Trigger animation when reveal state changes
+  // 3. Animate Border
   useEffect(() => {
     revealProgress.value = withTiming(isRevealed ? 1 : 0, { duration: 500 });
   }, [isRevealed]);
 
+  // --- HANDLERS ---
+
   const handleRate = (isPass: boolean) => {
     setIsRevealed(false);
     onRate(activeCard, isPass);
+  };
+
+  const handleWordPress = (word: string, meta: object) => {
+    setSelectedWord(word);
+    setSelectedMeta(meta);
+    setDictModalVisible(true);
   };
 
   // --- ANIMATED STYLES ---
@@ -91,68 +84,12 @@ export function FlashcardView({ queue, onRate, onBack }: Props) {
     const borderColor = interpolateColor(
       revealProgress.value,
       [0, 1],
-      [Colors.dark.border, Colors.dark.primary] // From Grey to Primary/Tertiary
+      [activeColors.border, activeColors.primary],
     );
-    return { borderColor, borderWidth: 2 }; // Ensure width is set
+    return { borderColor, borderWidth: 2 };
   });
 
-  const renderHighlightedContext = () => {
-    if (!contextPhrase) return null;
-
-    // get phrase tokens in order
-    // TODO convert token_map to array to drastically simplify this process
-    // (requires backend modification)
-    const tokensWithInfo = JSON.parse(contextPhrase.raw_data).tokens;
-    const tokenMetaPairs = tokensWithInfo.map((item) => ({
-      token: item.token,
-      meta:
-        item.model_to_result && Object.keys(item.model_to_result).length > 0
-          ? item.model_to_result
-          : null,
-    }));
-    console.log(JSON.stringify(tokenMetaPairs, null, 2));
-    const target = activeCard.front;
-
-    const notActiveClassString = "font-japanese text-foreground";
-    const activeClassString = "font-japanese-semibold text-foreground";
-    const textStyle = { fontSize: f(24) };
-
-    return (
-      <View className="flex-row">
-        {/* The outer Text component acts as the paragraph container.
-            Nested Text components flow inline like <span> tags on the web.
-         */}
-        <Text className="flex-wrap text-center" style={{ width: "100%" }}>
-          {tokenMetaPairs.map((part: any, index: number) => {
-            const isTarget = part.token === target;
-            const hasMeta = !!part.meta;
-
-            return (
-              <Text
-                key={index}
-                // ✅ KEY FIX: Use onPress directly on Text, not TouchableOpacity
-                onPress={
-                  hasMeta
-                    ? () => handleWordPress(part.token, part.meta)
-                    : undefined
-                }
-                // Optional: Shows a native grey highlight on press (iOS/Android)
-                suppressHighlighting={false}
-                className={isTarget ? activeClassString : notActiveClassString}
-                style={{
-                  color: isTarget ? Colors.dark.primary : Colors.dark.text,
-                  ...textStyle,
-                }}
-              >
-                {part.token}
-              </Text>
-            );
-          })}
-        </Text>
-      </View>
-    );
-  };
-
+  // --- RENDER: FINISHED STATE ---
   if (!activeCard) {
     return (
       <View className="flex-1 bg-background justify-center items-center">
@@ -169,52 +106,25 @@ export function FlashcardView({ queue, onRate, onBack }: Props) {
     );
   }
 
-  const remainingCount = queue.length;
-  const starsToShow = Math.min(remainingCount, 8);
-
+  // --- RENDER: ACTIVE CARD ---
   return (
     <View
-      className="flex-1 bg-background"
+      className="flex-1 bg-background gap-sm_24 px-sm_16"
       style={{
-        paddingBottom: insets.bottom + 20,
-        paddingTop: insets.top + 10,
+        paddingBottom: insets.bottom + SizesRaw.spacing.sm_16,
+        paddingTop: insets.top + SizesRaw.spacing.sm_16,
       }}
     >
-      {/* TOP BAR */}
-      <View className="flex-row justify-between items-center px-4 mb-4">
-        <TouchableOpacity onPress={onBack}>
-          <Ionicons
-            name="arrow-back"
-            size={SizesRaw.iconMd}
-            color={activeColors.text}
-          />
-        </TouchableOpacity>
+      <TopBar onBack={onBack} remainingCount={queue.length} />
 
-        <View className="flex-row items-center bg-surface px-3 py-1 rounded-full gap-1">
-          {Array.from({ length: starsToShow }).map((_, i) => (
-            <Star key={i} size={14} weight="fill" color="white" opacity={0.9} />
-          ))}
-          {remainingCount > 8 && (
-            <Text className="text-white/70 text-xs ml-1 font-bold">
-              +{remainingCount - 8}
-            </Text>
-          )}
-        </View>
-
-        <TouchableOpacity>
-          <Ionicons name="ellipsis-horizontal" size={24} color="white" />
-        </TouchableOpacity>
-      </View>
-
-      {/* CARD AREA */}
-      <View className="flex-1 px-4">
+      {/* Main Card Area */}
+      <View className="flex-1">
         <TouchableOpacity
           activeOpacity={1}
           onPress={() => setIsRevealed((prev) => !prev)}
-          style={{ flex: 1 }} // Needed for proper layout
+          style={{ flex: 1 }}
         >
           <Animated.View
-            // Apply Animated Border Style here
             style={[
               {
                 flex: 1,
@@ -225,175 +135,17 @@ export function FlashcardView({ queue, onRate, onBack }: Props) {
               animatedBorderStyle,
             ]}
           >
-            {/* 1. BACKGROUND LAYER */}
+            {/* Background Layer */}
             <View className="absolute inset-0 bg-surface z-0" />
 
-            {/* Revealed Background Image */}
-            {isRevealed && activeCard.img_url && (
-              <Animated.View
-                entering={FadeIn.duration(700)}
-                className="absolute inset-0 z-0"
-              >
-                <Image
-                  source={{ uri: activeCard.img_url }}
-                  className="w-full h-full"
-                  resizeMode="cover"
-                  blurRadius={1}
-                />
-                <View className="absolute inset-0 bg-black/30" />
-              </Animated.View>
-            )}
+            <CardContent
+              activeCard={activeCard}
+              isRevealed={isRevealed}
+              definition={definition}
+              handleWordPress={handleWordPress}
+            />
 
-            {/* 2. GRADIENT OVERLAY (Bottom) */}
-            {isRevealed && (
-              <Animated.View
-                entering={FadeIn.duration(500)}
-                className="absolute bottom-0 left-0 right-0 h-[64px] z-10" // Height covers button area
-              >
-                <LinearGradient
-                  colors={[
-                    `${activeCard.img_url ? "rgba(33, 33, 36, 0)" : "rgb(48, 48, 54, 0)"}`,
-                    `${activeCard.img_url ? "rgba(33, 33, 36, 0.95)" : "rgb(48, 48, 54, 0.95)"}`,
-                    "rgba(101, 126, 212, 1)",
-                  ]}
-                  locations={[0, 0.15, 1]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 0, y: 1 }}
-                  style={{ width: "100%", height: "100%" }}
-                />
-              </Animated.View>
-            )}
-
-            {/* 3. CONTENT CONTAINER */}
-            <View className="flex-1 items-center justify-center z-20">
-              {/* FRONT */}
-              <Animated.View
-                layout={Layout.springify()}
-                className="items-center w-full"
-              >
-                {/* {activeCard.type === "word" &&
-                  activeCard.front_furigana !== activeCard.front && (
-                    <Text
-                      className="text-foreground text-center font-japanese mb-[-6px]"
-                      style={{ fontSize: f(12) }}
-                    >
-                      {activeCard.front_furigana || ""}
-                    </Text>
-                  )} */}
-
-                <View className="text-foreground font-japanese-semibold text-center">
-                  <InteractiveText
-                    text={activeCard.front}
-                    furigana={activeCard.front_furigana}
-                    onPressWord={handleWordPress}
-                    size={f(48)}
-                  />
-                </View>
-
-                {activeCard.type === "word" && renderHighlightedContext()}
-
-                {/* {!isRevealed && (
-                  <Text className="text-white/40 text-sm mt-8 text-center">
-                    Tap to reveal meaning
-                  </Text>
-                )} */}
-              </Animated.View>
-
-              {/* Horizontal Line */}
-              {isRevealed && (
-                <Animated.View
-                  className="h-[1px] bg-white/30 w-full my-6"
-                  entering={FadeInDown.duration(400)}
-                />
-              )}
-
-              {/* BACK (Revealed) */}
-              {isRevealed && (
-                <Animated.View
-                  entering={FadeInDown.duration(400)}
-                  className="w-full items-center"
-                >
-                  <View className="h-[1px] bg-white/30 w-full my-6" />
-
-                  {/* --- CASE A: WORD CARD (Show Dictionary Def) --- */}
-                  {activeCard.type === "word" ? (
-                    <View className="w-full">
-                      {definition ? (
-                        <View>
-                          {/* Show first 3 senses max to keep it clean */}
-                          {(Array.isArray(definition.sense)
-                            ? definition.sense
-                            : [definition.sense]
-                          )
-                            .slice(0, 3)
-                            .map((s: any, i: number) => (
-                              <View key={i} className="mb-4">
-                                <Text className="text-white/50 text-xs uppercase mb-1">
-                                  {Array.isArray(s.pos) ? s.pos[0] : s.pos}
-                                </Text>
-                                <Text className="text-white text-xl font-medium leading-7">
-                                  {i + 1}. {renderGloss(s.gloss)}
-                                </Text>
-                              </View>
-                            ))}
-                        </View>
-                      ) : (
-                        <Text className="text-white text-center italic opacity-50">
-                          Loading definition...
-                        </Text>
-                      )}
-
-                      {/* Show Context Sentence below definition */}
-                      {contextPhrase && (
-                        <View className="mt-6 pt-6 border-t border-white/10">
-                          <Text className="text-white/40 text-xs text-center mb-2">
-                            CONTEXT
-                          </Text>
-                          <Text className="text-white/80 text-center text-lg font-heading">
-                            {contextPhrase.front}
-                          </Text>
-                          <Text className="text-white/50 text-center italic mt-1">
-                            {contextPhrase.back}
-                          </Text>
-                        </View>
-                      )}
-                    </View>
-                  ) : (
-                    // --- CASE B: PHRASE CARD (Show Translation) ---
-                    <View>
-                      <Text
-                        className="text-white text-center font-medium leading-8 shadow-black shadow-md"
-                        style={{ fontSize: f(24) }}
-                      >
-                        {activeCard.back}
-                      </Text>
-                    </View>
-                  )}
-                </Animated.View>
-              )}
-            </View>
-
-            {/* 4. ACTION BUTTONS */}
-            {isRevealed && (
-              <Animated.View
-                entering={FadeIn.delay(200)}
-                className="absolute bottom-8 left-0 right-0 flex-row justify-center gap-8 z-30"
-              >
-                <TouchableOpacity
-                  onPress={() => handleRate(false)}
-                  className="w-16 h-16 rounded-full bg-[#FF6B6B] items-center justify-center shadow-lg border border-white/20"
-                >
-                  <XIcon size={32} color="black" weight="bold" />
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  onPress={() => handleRate(true)}
-                  className="w-16 h-16 rounded-full bg-[#61E786] items-center justify-center shadow-lg border border-white/20"
-                >
-                  <Check size={32} color="black" weight="bold" />
-                </TouchableOpacity>
-              </Animated.View>
-            )}
+            {isRevealed && <ActionButtons onRate={handleRate} />}
           </Animated.View>
         </TouchableOpacity>
       </View>
