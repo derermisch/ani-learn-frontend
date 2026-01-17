@@ -1,11 +1,13 @@
 import { Colors } from "@/constants/theme";
-import {
-  LocalCard,
-  OwnedDeck,
-  storageService,
-} from "@/services/StorageService";
+import { Card, OwnedDeck } from "@/constants/types";
+import { storageService } from "@/services/StorageService";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import { Check, Funnel, Gear, Play } from "phosphor-react-native";
+import {
+  CheckIcon,
+  FunnelIcon,
+  GearIcon,
+  PlayIcon,
+} from "phosphor-react-native";
 import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
@@ -27,7 +29,7 @@ export default function DeckDashboardScreen() {
   const insets = useSafeAreaInsets();
 
   const [deck, setDeck] = useState<OwnedDeck | null>(null);
-  const [allCards, setAllCards] = useState<LocalCard[]>([]);
+  const [allCards, setAllCards] = useState<Card[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Filter State
@@ -40,7 +42,7 @@ export default function DeckDashboardScreen() {
   useFocusEffect(
     useCallback(() => {
       loadData();
-    }, [id])
+    }, [id]),
   );
 
   const loadData = async () => {
@@ -57,7 +59,7 @@ export default function DeckDashboardScreen() {
       // Calc Stats (based on ALL cards)
       const studied = deckCards.filter((c) => c.state > 0).length;
       setProgress(
-        deckCards.length > 0 ? (studied / deckCards.length) * 100 : 0
+        deckCards.length > 0 ? (studied / deckCards.length) * 100 : 0,
       );
     } catch (e) {
       console.error(e);
@@ -90,21 +92,21 @@ export default function DeckDashboardScreen() {
 
   // --- RENDERERS ---
 
-  const renderCardItem = ({ item }: { item: LocalCard }) => {
+  const renderCardItem = ({ item }: { item: Card }) => {
     let statusColor = "#333";
-    let progressWidth = "0%";
+    let progressFlex = 0;
 
     if (item.state === 1) {
       statusColor = "#EAB308";
-      progressWidth = "30%";
+      progressFlex = 0.3;
     } // Learning
     if (item.state === 2) {
       statusColor = "#10B981";
-      progressWidth = "100%";
+      progressFlex = 1;
     } // Review
     if (item.state === 3) {
       statusColor = "#EF4444";
-      progressWidth = "15%";
+      progressFlex = 0.15;
     } // Relearning
 
     return (
@@ -112,7 +114,7 @@ export default function DeckDashboardScreen() {
         <View style={styles.cardItemProgressTrack}>
           <View
             style={{
-              width: progressWidth,
+              flex: progressFlex,
               height: "100%",
               backgroundColor: "#A071FF",
               borderRadius: 2,
@@ -146,7 +148,7 @@ export default function DeckDashboardScreen() {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>YOUR LIBRARY</Text>
         <TouchableOpacity onPress={() => router.push("/(tabs)")}>
-          <Gear size={26} color="#FFF" weight="fill" />
+          <GearIcon size={26} color="#FFF" weight="fill" />
         </TouchableOpacity>
       </View>
 
@@ -194,7 +196,7 @@ export default function DeckDashboardScreen() {
           style={styles.startStudyBtn}
           onPress={handleStartStudy}
         >
-          <Play weight="fill" color="#000" size={20} />
+          <PlayIcon weight="fill" color="#000" size={20} />
           <Text style={styles.startStudyText}>Start Study Session</Text>
         </TouchableOpacity>
 
@@ -211,7 +213,7 @@ export default function DeckDashboardScreen() {
             onPress={() => setIsFilterVisible(true)}
             style={styles.filterBtn}
           >
-            <Funnel
+            <FunnelIcon
               size={20}
               color={isFilterVisible ? "#FFF" : "#AAA"}
               weight={isFilterVisible ? "fill" : "regular"}
@@ -277,7 +279,7 @@ export default function DeckDashboardScreen() {
                       {opt.label}
                     </Text>
                     {filterMode === opt.id && (
-                      <Check size={20} color="#A071FF" weight="bold" />
+                      <CheckIcon size={20} color="#A071FF" weight="bold" />
                     )}
                   </TouchableOpacity>
                 ))}
