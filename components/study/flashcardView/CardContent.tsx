@@ -1,13 +1,13 @@
-import { EnrichedFlashcard } from "@/app/deck/[id]/study";
 import { InteractiveText } from "@/components/study/InteractiveText";
 import { Colors, f } from "@/constants/theme";
+import { Card } from "@/constants/types";
 import { LinearGradient } from "expo-linear-gradient";
 import React from "react";
 import { Image, Text as RNText, Text, View } from "react-native";
 import Animated, { FadeIn, FadeInDown, Layout } from "react-native-reanimated";
 
 interface CardContentProps {
-  activeCard: EnrichedFlashcard;
+  activeCard: Card;
   isRevealed: boolean;
   definition: any;
   handleWordPress: (word: string, meta: object) => void;
@@ -128,7 +128,7 @@ export function CardContent({
             <InteractiveText
               text={activeCard.front}
               furigana={(activeCard as any).front_furigana}
-              onPressWord={handleWordPress}
+              onPressWord={(word) => handleWordPress(word, {})}
               size={f(48)}
             />
           </View>

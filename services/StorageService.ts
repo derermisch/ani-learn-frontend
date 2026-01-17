@@ -1,62 +1,66 @@
+/**
+ * This is for interaction with the storage db
+ * The storage db has two tables:
+ *  - owned_decks
+ *  - cards
+ */
+
+import { Card, OwnedDeck } from "@/constants/types";
 import * as FileSystem from "expo-file-system/legacy";
 import * as SQLite from "expo-sqlite";
 import { State } from "ts-fsrs";
 
 const DB_NAME = "storage.db";
 
-export interface OwnedDeck {
-  id: string;
-  file_hash: string;
-  title: string;
-  unlocked_at: string;
-}
-
-export interface LocalCard {
-  id: string;
-  deck_id: string;
-  type: "word" | "phrase";
-  front: string;
-  back: string;
-  dictionary_entry_id?: string;
-  context_phrase_id?: string;
-  token_map: string;
-  raw_data: string;
-
-  // FSRS Fields
-  state: number;
-  due: string;
-  stability: number;
-  difficulty: number;
-  elapsed_days: number;
-  scheduled_days: number;
-  reps: number;
-  lapses: number;
-  last_review?: string;
-}
-
-// HELPER: SQLite crashes if you pass 'undefined'. This converts undefined -> null.
+/**
+ * SQLite crashes if `undefined` is passed as a parameter.
+ * This helper converts all `undefined` values to `null`
+ * so they are safe to bind in SQL queries.
+ *
+ * @param params - Array of SQL parameters
+ * @returns Array with `undefined` replaced by `null`
+ */
 const toSqlParams = (params: any[]) => {
   return params.map((p) => (p === undefined ? null : p));
 };
 
 class StorageService {
+  /** SQLite database instance once initialized */
   private db: SQLite.SQLiteDatabase | null = null;
+
+  /** Guards against concurrent initialization attempts */
   private isInitializing = false;
 
+  /**
+   * Initializes the SQLite database.
+   *
+   * - Ensures the SQLite directory exists
+   * - Opens the database connection
+   * - Enables WAL mode
+   * - Creates required tables if they do not exist
+   *
+   * Safe to call multiple times.
+   */
   async init() {
-    if (this.db) return; // Already initialized
-    if (this.isInitializing) return; // Prevent concurrent inits
+    // already initialized
+    if (this.db) return;
+    // prevent concurrent inits
+    if (this.isInitializing) return;
 
     this.isInitializing = true;
     try {
       const dbDir = FileSystem.documentDirectory + "SQLite";
       const dirInfo = await FileSystem.getInfoAsync(dbDir);
+
+      // create db dir if not existing
       if (!dirInfo.exists) {
         await FileSystem.makeDirectoryAsync(dbDir);
       }
 
       this.db = await SQLite.openDatabaseAsync(DB_NAME);
 
+      // WAL -> Write Ahead Logging
+      // Create tables if they dont exist
       await this.db.execAsync(`
         PRAGMA journal_mode = WAL;
         
@@ -101,6 +105,11 @@ class StorageService {
     }
   }
 
+  /**
+   * Ensures the database is initialized before use.
+   *
+   * @throws Error if initialization fails
+   */
   private async ensureDb() {
     if (!this.db) await this.init();
     if (!this.db) throw new Error("[Storage] DB failed to initialize.");
@@ -108,6 +117,10 @@ class StorageService {
 
   // --- DECK OPERATIONS ---
 
+  /**
+   * Removes all owned decks and all cards.
+   * Effectively locks all decks and clears local progress.
+   */
   async lockAllDecks() {
     await this.ensureDb();
     await this.db!.runAsync("DELETE FROM owned_decks");
@@ -115,37 +128,67 @@ class StorageService {
     console.log("[Storage] All decks and cards cleared.");
   }
 
+  /**
+   * Checks whether a deck is unlocked.
+   *
+   * @param deckId - Deck identifier
+   * @returns True if the deck exists in `owned_decks`
+   */
   async isDeckUnlocked(deckId: string): Promise<boolean> {
     await this.ensureDb();
     const result = await this.db!.getFirstAsync<{ count: number }>(
       "SELECT count(*) as count FROM owned_decks WHERE id = ?",
-      [deckId]
+      [deckId],
     );
     return (result?.count ?? 0) > 0;
   }
 
+  /**
+   * Unlocks (or re-unlocks) a deck.
+   *
+   * Uses `INSERT OR REPLACE` so calling this is idempotent.
+   *
+   * @param deckId - Deck identifier
+   * @param hash - Hash of the deck file
+   * @param title - Optional deck title
+   */
   async unlockDeck(
     deckId: string,
     hash: string,
-    title: string = "Unknown Deck"
+    title: string = "Unknown Deck",
   ) {
     await this.ensureDb();
     await this.db!.runAsync(
       "INSERT OR REPLACE INTO owned_decks (id, file_hash, title, unlocked_at) VALUES (?, ?, ?, ?)",
-      toSqlParams([deckId, hash, title, new Date().toISOString()])
+      toSqlParams([deckId, hash, title, new Date().toISOString()]),
     );
   }
 
+  /**
+   * Retrieves all unlocked decks.
+   *
+   * @returns Array of owned decks ordered by unlock date (newest first)
+   */
   async getOwnedDecks(): Promise<OwnedDeck[]> {
     await this.ensureDb();
     return await this.db!.getAllAsync<OwnedDeck>(
-      "SELECT * FROM owned_decks ORDER BY unlocked_at DESC"
+      "SELECT * FROM owned_decks ORDER BY unlocked_at DESC",
     );
   }
 
   // --- CARD OPERATIONS ---
 
-  async saveCardsForDeck(deckId: string, cards: Partial<LocalCard>[]) {
+  /**
+   * Saves all cards for a given deck.
+   *
+   * - Deletes existing cards for the deck
+   * - Inserts new cards with FSRS default values
+   * - Skips invalid cards defensively
+   *
+   * @param deckId - Deck identifier
+   * @param cards - Partial card objects to persist
+   */
+  async saveCardsForDeck(deckId: string, cards: Partial<Card>[]) {
     await this.ensureDb();
     if (cards.length === 0) return;
 
@@ -173,22 +216,22 @@ class StorageService {
             deckId,
             card.type,
             card.front,
-            card.back ?? "", // Safe Default
+            card.back ?? "",
             card.dictionary_entry_id ?? null,
             card.context_phrase_id ?? null,
             card.token_map ?? "{}",
             card.raw_data ?? "{}",
             // FSRS Defaults
-            State.New, // state = 0
-            now, // due
-            0, // stability
-            0, // difficulty
-            0, // elapsed
-            0, // scheduled
-            0, // reps
-            0, // lapses
-            null, // last_review
-          ])
+            State.New,
+            now,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            null,
+          ]),
         );
       }
       console.log(`[Storage] Saved ${cards.length} cards.`);
@@ -198,18 +241,30 @@ class StorageService {
     }
   }
 
-  async getCards(deckId: string): Promise<LocalCard[]> {
+  /**
+   * Retrieves all cards for a given deck.
+   *
+   * @param deckId - Deck identifier
+   * @returns Array of cards belonging to the deck
+   */
+  async getCards(deckId: string): Promise<Card[]> {
     await this.ensureDb();
-    return await this.db!.getAllAsync<LocalCard>(
+    return await this.db!.getAllAsync<Card>(
       "SELECT * FROM cards WHERE deck_id = ?",
-      [deckId]
+      [deckId],
     );
   }
 
-  async updateCardStats(card: LocalCard) {
+  /**
+   * Updates FSRS scheduling statistics for a single card.
+   *
+   * Defensive defaults are applied to prevent invalid DB writes.
+   *
+   * @param card - Card with updated FSRS fields
+   */
+  async updateCardStats(card: Card) {
     await this.ensureDb();
 
-    // Defensive: Fallback to defaults if any FSRS stat is somehow undefined
     const params = toSqlParams([
       card.state ?? 0,
       card.due ?? new Date().toISOString(),
@@ -228,34 +283,46 @@ class StorageService {
          state = ?, due = ?, stability = ?, difficulty = ?, 
          elapsed_days = ?, scheduled_days = ?, reps = ?, lapses = ?, last_review = ?
        WHERE id = ?`,
-      params
+      params,
     );
-
-    // Optional: Log success only in dev to reduce noise
-    // console.log(`[Storage] Updated stats for card ${card.id}`);
   }
 
+  /**
+   * Forces a full WAL checkpoint.
+   *
+   * Flushes the write-ahead log into the main database file.
+   * Useful before backups or app shutdown.
+   */
   async forceCheckpoint() {
     await this.ensureDb();
     await this.db!.execAsync("PRAGMA wal_checkpoint(FULL);");
     console.log("[Storage] Checkpointed.");
   }
 
+  /**
+   * Returns the total number of cards in the database.
+   *
+   * @returns Total card count
+   */
   async getCardCount(): Promise<number> {
     await this.ensureDb();
     const res = await this.db!.getFirstAsync<{ c: number }>(
-      "SELECT count(*) as c FROM cards"
+      "SELECT count(*) as c FROM cards",
     );
     return res?.c || 0;
   }
 
+  /**
+   * Drops all tables and recreates the database schema.
+   *
+   * This fully resets local storage.
+   */
   async resetDatabase() {
     await this.ensureDb();
     try {
       await this.db!.execAsync("DROP TABLE IF EXISTS cards");
       await this.db!.execAsync("DROP TABLE IF EXISTS owned_decks");
       console.log("[Storage] Tables dropped.");
-      // Force init to recreate schemas immediately
       this.db = null;
       await this.init();
     } catch (e) {

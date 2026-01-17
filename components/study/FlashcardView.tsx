@@ -1,10 +1,6 @@
-import { EnrichedFlashcard } from "@/app/deck/[id]/study";
 import { DictionaryModal } from "@/components/modals/DictionaryModal";
-import { ActionButtons } from "@/components/study/flashcardView/ActionButtons";
-import { CardContent } from "@/components/study/flashcardView/CardContent";
-import { TopBar } from "@/components/study/flashcardView/TopBar";
 import { Colors, SizesRaw } from "@/constants/theme";
-import { Flashcard } from "@/constants/types";
+import { Card } from "@/constants/types";
 import { dictionaryService } from "@/services/DictionaryService";
 import React, { useEffect, useState } from "react";
 import { Text, TouchableOpacity, View } from "react-native";
@@ -15,10 +11,13 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ActionButtons } from "../study/flashcardView/ActionButtons";
+import { CardContent } from "../study/flashcardView/CardContent";
+import { TopBar } from "../study/flashcardView/TopBar";
 
 interface Props {
-  queue: EnrichedFlashcard[];
-  onRate: (card: Flashcard, isPass: boolean) => void;
+  queue: Card[];
+  onRate: (card: Card, isPass: boolean) => void;
   onBack: () => void;
 }
 
@@ -26,7 +25,7 @@ export function FlashcardView({ queue, onRate, onBack }: Props) {
   const activeColors = Colors["dark"];
   const insets = useSafeAreaInsets();
 
-  // State
+  // --- STATE ---
   const [isRevealed, setIsRevealed] = useState(false);
   const [dictModalVisible, setDictModalVisible] = useState(false);
   const [selectedWord, setSelectedWord] = useState("");
@@ -37,11 +36,10 @@ export function FlashcardView({ queue, onRate, onBack }: Props) {
   const revealProgress = useSharedValue(0);
 
   // --- EFFECTS ---
-
   // 1. Reset state when card changes
   useEffect(() => {
     setDefinition(null);
-    setIsRevealed(false); // Changed to false to start hidden
+    setIsRevealed(false);
   }, [activeCard]);
 
   // 2. Fetch definition when revealed (if Word)
@@ -67,7 +65,6 @@ export function FlashcardView({ queue, onRate, onBack }: Props) {
   }, [isRevealed]);
 
   // --- HANDLERS ---
-
   const handleRate = (isPass: boolean) => {
     setIsRevealed(false);
     onRate(activeCard, isPass);
@@ -93,7 +90,7 @@ export function FlashcardView({ queue, onRate, onBack }: Props) {
   if (!activeCard) {
     return (
       <View className="flex-1 bg-background justify-center items-center">
-        <Text className="text-white font-heading text-3xl">
+        <Text className="text-foreground font-heading text-3xl">
           Session Complete!
         </Text>
         <TouchableOpacity
