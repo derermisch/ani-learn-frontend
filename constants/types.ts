@@ -39,6 +39,8 @@ export interface Deck {
   episode: number;
   created_at: string;
   updated_at: string;
+  lang?: string;
+  cards?: Card[];
 }
 
 export interface OwnedDeck {
@@ -48,7 +50,7 @@ export interface OwnedDeck {
   unlocked_at: string;
 }
 
-export interface Card extends FSRSCard {
+export interface Card extends Partial<FSRSCard> {
   id: string;
   deck_id: string;
   type: "word" | "phrase";
@@ -59,5 +61,5 @@ export interface Card extends FSRSCard {
   token_map: string;
   raw_data: string;
   img_url?: string;
-  context_card: Card | undefined;
+  context_card?: Card;
 }

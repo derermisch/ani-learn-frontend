@@ -60,14 +60,14 @@ export function useSubtitleEngine() {
         while (offset < totalLength) {
           const chunk = fileBase64.slice(offset, offset + CHUNK_SIZE);
           webViewRef.current.injectJavaScript(
-            `window.appendSubtitleChunk("${chunk}");`
+            `window.appendSubtitleChunk("${chunk}");`,
           );
           await new Promise((resolve) => setTimeout(resolve, 10));
           offset += CHUNK_SIZE;
         }
 
         webViewRef.current.injectJavaScript(
-          `window.processBufferedSubtitle();`
+          `window.processBufferedSubtitle();`,
         );
       }
     } catch (e) {
@@ -103,7 +103,6 @@ export function useSubtitleEngine() {
         setIsWebViewReady(true);
       } else if (data.type === "RESULT") {
         setIsProcessing(false);
-        // ✅ FIX: Map 'preview' from PHP to 'text' for the UI
         setPreviewData({
           hash: data.payload.hash,
           text: data.payload.preview,
@@ -149,10 +148,10 @@ export function useSubtitleEngine() {
       let finalHtml = indexHtml;
       finalHtml = finalHtml.replace("// __INJECT_WORKER_JS__", () => workerJs);
       finalHtml = finalHtml.replace("{{INSTALL_PHP}}", () =>
-        escapeForJsTemplate(installPhp)
+        escapeForJsTemplate(installPhp),
       );
       finalHtml = finalHtml.replace("{{PROCESS_PHP}}", () =>
-        escapeForJsTemplate(processPhp)
+        escapeForJsTemplate(processPhp),
       );
 
       setHtmlContent(finalHtml);
@@ -182,5 +181,7 @@ export function useSubtitleEngine() {
     processFile,
     resetPreview,
     handleMessage,
+    // ✅ NEW: Exposed Setter so Simple Flow can inject data
+    setPreviewData,
   };
 }

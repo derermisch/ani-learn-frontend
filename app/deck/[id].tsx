@@ -1,4 +1,4 @@
-import { LocalCard, storageService } from "@/services/StorageService";
+import { storageService } from "@/services/StorageService";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -13,9 +13,9 @@ import {
 } from "react-native";
 import { WebView } from "react-native-webview";
 import { UnlockFlow } from "../../components/deck/UnlockFlow";
-import { Deck } from "../../constants/types";
-import { useDeckStatus } from "../../hooks/useDeckStatus"; // <--- NEW HOOK
-import { useSubtitleEngine } from "../../hooks/useSubtitleEngine";
+import { Card, Deck } from "../../constants/types";
+import { useDeckStatus } from "../../hooks/useDeckStatus";
+import { PreviewData, useSubtitleEngine } from "../../hooks/useSubtitleEngine"; // Import PreviewData type
 import {
   getDeckCards,
   getDeckDetails,
@@ -33,7 +33,7 @@ export default function DeckDetailScreen() {
 
   // Check if deck is already unlocked locally
   const { isUnlocked, markAsUnlocked, loadingStatus } = useDeckStatus(
-    id as string
+    id as string,
   );
 
   useEffect(() => {
@@ -53,11 +53,8 @@ export default function DeckDetailScreen() {
   };
 
   // HELPER: Transform Backend Data -> List of Phrases AND Words
-  const processBackendCards = (
-    backendCards: any[],
-    deckId: string
-  ): LocalCard[] => {
-    const allItems: LocalCard[] = [];
+  const processBackendCards = (backendCards: any[], deckId: string): Card[] => {
+    const allItems: Card[] = [];
 
     backendCards.forEach((c, index) => {
       // --- 1. PREPARE PHRASE CARD ---
@@ -89,7 +86,7 @@ export default function DeckDetailScreen() {
             tokenMap[t.token] = entryId; // Add to phrase's map
 
             // Create the WORD Card
-            const wordCard: LocalCard = {
+            const wordCard: Card = {
               id: `${phraseId}_word_${tokenIdx}`, // Deterministic ID linked to phrase
               deck_id: deckId,
               type: "word",
@@ -106,7 +103,7 @@ export default function DeckDetailScreen() {
       }
 
       // --- 3. CREATE PHRASE CARD ---
-      const phraseCard: LocalCard = {
+      const phraseCard: Card = {
         id: phraseId,
         deck_id: deckId,
         type: "phrase",
@@ -124,13 +121,20 @@ export default function DeckDetailScreen() {
     return allItems;
   };
 
+  // --- NEW: Handle Simple SRT Unlock ---
+  const handleSimpleUnlock = (data: PreviewData) => {
+    // We manually inject the data into the engine state.
+    // This allows us to reuse the existing "Confirm Subtitle" UI logic.
+    engine.setPreviewData(data);
+  };
+
   const handleUnlockVerification = async () => {
     if (!engine.previewData || !id) return;
 
     try {
       const result = await unlockDeckWithHash(
         id as string,
-        engine.previewData.hash
+        engine.previewData.hash,
       );
 
       if (result.success) {
@@ -145,7 +149,7 @@ export default function DeckDetailScreen() {
           console.error("❌ Failed to save cards:", err);
           Alert.alert(
             "Warning",
-            "Deck unlocked, but failed to download cards."
+            "Deck unlocked, but failed to download cards.",
           );
         }
 
@@ -197,8 +201,11 @@ export default function DeckDetailScreen() {
 
         <View style={styles.metaContainer}>
           <View style={styles.badge}>
-            <Text style={styles.badgeText}>{deck.lang.toUpperCase()}</Text>
+            <Text style={styles.badgeText}>
+              {deck.lang && deck.lang.toUpperCase()}
+            </Text>
           </View>
+          {/* @ts-ignore */}
           <Text style={styles.metaText}>{deck.cards} Cards</Text>
           <Text style={styles.metaText}>•</Text>
           <Text style={styles.metaText}>
@@ -238,6 +245,8 @@ export default function DeckDetailScreen() {
             isProcessing={engine.isProcessing}
             previewData={engine.previewData}
             onFileSelect={engine.processFile}
+            // ✅ ADDED: Handler for simple SRT flow
+            onSimpleUnlock={handleSimpleUnlock}
             onConfirm={handleUnlockVerification}
             onCancel={engine.resetPreview}
           />

@@ -3,7 +3,6 @@ import {
   Deck,
   ProcessingConfig,
   Show,
-  Stats,
   TaskProgress,
 } from "@/constants/types";
 import axios from "axios";
@@ -19,15 +18,15 @@ export const api = axios.create({
 });
 
 // --- 1. SYSTEM & CONFIG ---
-export const getStats = async (): Promise<Stats> => {
-  try {
-    const res = await api.get("/stats");
-    return res.data;
-  } catch (e) {
-    console.log("Server Check Failed");
-    throw e;
-  }
-};
+// export const getStats = async (): Promise<Stats> => {
+//   try {
+//     const res = await api.get("/stats");
+//     return res.data;
+//   } catch (e) {
+//     console.log("Server Check Failed");
+//     throw e;
+//   }
+// };
 
 export const getProcessingConfig = async (): Promise<ProcessingConfig> => {
   try {
@@ -94,7 +93,7 @@ export const getDeckDetails = async (deckId: string): Promise<Deck> => {
  */
 export const unlockDeckWithHash = async (
   deckId: string,
-  hash: string
+  hash: string,
 ): Promise<{ success: boolean; message: string }> => {
   try {
     // Send username so backend knows who unlocked it
@@ -138,7 +137,7 @@ export const createDeck = async (formData: FormData) => {
 };
 
 export const getTaskProgress = async (
-  taskId: string
+  taskId: string,
 ): Promise<TaskProgress> => {
   try {
     const res = await api.get(`/progress/${taskId}`);
@@ -152,10 +151,10 @@ export const getTaskProgress = async (
 };
 
 // --- 5. USER ---
-export const registerUser = async (username: string) => {
-  const res = await api.post("/users", { username });
-  return res.data;
-};
+// export const registerUser = async (username: string) => {
+//   const res = await api.post("/users", { username });
+//   return res.data;
+// };
 
 export const stopProcessingTask = async (taskId: string) => {
   try {

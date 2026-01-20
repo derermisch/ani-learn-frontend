@@ -30,7 +30,7 @@ export default function StudyScreen() {
         // Convert SQL strings (ISO dates) back to JS Date objects
         const hydratedCards: Card[] = rawCards.map((c) => ({
           ...c,
-          due: new Date(c.due),
+          due: c.due ? new Date(c.due) : new Date(),
           last_review: c.last_review ? new Date(c.last_review) : undefined,
           // These numeric fields come straight from SQL
           state: c.state,
@@ -64,13 +64,18 @@ export default function StudyScreen() {
 
     // 2. Filter by FSRS (New or Due)
     // Note: 'state === State.New' (0) OR 'due <= now'
-    cards = cards.filter((c) => c.state === State.New || c.due <= now);
+    cards = cards.filter(
+      (c) => c.state === State.New || (c.due && c.due <= now),
+    );
 
     // 3. Sort
     if (order === "shuffled") {
       cards = cards.sort(() => Math.random() - 0.5);
     } else {
-      cards = cards.sort((a, b) => a.due.getTime() - b.due.getTime());
+      cards = cards.sort(
+        (a, b) =>
+          (a.due ?? new Date()).getTime() - (b.due ?? new Date()).getTime(),
+      );
     }
 
     if (cards.length === 0) {
